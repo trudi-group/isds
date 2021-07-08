@@ -1,6 +1,3 @@
-// (Lines like the one below ignore selected Clippy rules
-//  - it's useful when you want to check your code with `cargo make verify`
-// but some rules are too "annoying" or are not applicable for your case.)
 #![allow(clippy::wildcard_imports)]
 
 use seed::{prelude::*, *};
@@ -63,4 +60,21 @@ fn view(model: &Model) -> Node<Msg> {
 pub fn start() {
     // Mount the `app` to the element with the `id` "app".
     App::start("app", init, update, view);
+}
+
+// ------ ------
+//     Tests
+// ------ ------
+
+#[cfg(test)]
+mod tests {
+    // use super::*;
+    use wasm_bindgen_test::*;
+
+    wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
+
+    #[wasm_bindgen_test]
+    fn tests_work() {
+        assert!(true);
+    }
 }

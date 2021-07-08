@@ -9,7 +9,7 @@ skip_core_tasks = true
 [tasks.watch]
 description = "Watch files and recompile the project on change"
 run_task = [
-    { name = "build" },
+    { name = ["build", "test_h_firefox"] },
 ]
 watch = true
 

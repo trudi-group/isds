@@ -1,9 +1,8 @@
 [package]
 version = "0.1.0"
 name = "isds-bitcoin-prototype"
-repository = "https://github.com/seed-rs/seed-quickstart"
 authors = ["Martin Florian <martin.florian@hu-berlin.de>"]
-description = "App Description"
+description = "Interactive Simulation of Distributed Systems; Prototype for Bitcoin Consensus"
 categories = ["category"]
 license = "MIT"
 readme = "./README.md"
@@ -13,15 +12,15 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dev-dependencies]
-wasm-bindgen-test = "0.3.18"
+wasm-bindgen-test = "0.3"
 
 [dependencies]
-seed = "0.8.0"
+seed = "0.8"
 
 [profile.release]
 lto = true
-opt-level = 'z'
+opt-level = 3
 codegen-units = 1
 
 [package.metadata.wasm-pack.profile.release]
-wasm-opt = ['-Os']
+wasm-opt = ['-O4']

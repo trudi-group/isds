@@ -1,2 +1,7 @@
+# from template
 /target
 /pkg
+# from mafl
+Cargo.lock
+**/*.rs.bk
+**/*.swp
