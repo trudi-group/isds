@@ -1,54 +1,88 @@
 #![allow(clippy::wildcard_imports)]
 
+use legion::*;
+use ordered_float::OrderedFloat;
 use seed::{prelude::*, *};
 
-// ------ ------
-//     Init
-// ------ ------
+mod animation;
+mod simulator;
+mod time;
+mod view;
+mod world;
+use animation::update_animated_objects;
+use simulator::{SimEvent, Simulator};
+use time::{SimSeconds, TimeKeeper};
+use view::view;
+use world::*;
 
-// `init` describes what should happen when your app started.
-fn init(_: Url, _: &mut impl Orders<Msg>) -> Model {
-    Model { counter: 0 }
-}
+static NET_MAX_X: f32 = 1000.;
+static NET_MAX_Y: f32 = 1000.;
+// This influences message latencies. 100ms for hosts that are very far from each other should be ~realistic.
+static FLIGHT_PER_SECOND: f64 = (NET_MAX_X * 10.) as f64;
 
 // ------ ------
 //     Model
 // ------ ------
 
 // `Model` describes our app state.
-struct Model {
-    counter: i32,
+pub struct Model {
+    pub world: World,
+    pub simulator: Simulator,
+    pub time: TimeKeeper,
+}
+
+// ------ ------
+//     Init
+// ------ ------
+
+// `init` describes what should happen when your app started.
+fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
+    orders.after_next_render(Msg::Rendered);
+    let world = World::default();
+    let mut simulator = Simulator::new();
+    let time = TimeKeeper::new(0.01);
+    simulator.schedule(time.sim_time(), SimEvent::SpawnRandomNodes(100));
+    simulator.schedule(time.sim_time(), SimEvent::SpawnRandomMessages(20));
+    Model {
+        world,
+        simulator,
+        time,
+    }
 }
 
 // ------ ------
 //    Update
 // ------ ------
 
-// (Remove the line below once any of your `Msg` variants doesn't implement `Copy`.)
 #[derive(Copy, Clone)]
 // `Msg` describes the different events you can modify state with.
-enum Msg {
-    Increment,
+pub enum Msg {
+    Rendered(RenderInfo),
+    UserPausePlay,
 }
 
 // `update` describes how to handle each `Msg`.
-fn update(msg: Msg, model: &mut Model, _: &mut impl Orders<Msg>) {
+fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
-        Msg::Increment => model.counter += 1,
+        Msg::Rendered(render_info) => {
+            // make sure animations are updated
+            let browser_seconds_past = render_info.timestamp_delta.unwrap_or_default() / 1000.;
+            if model
+                .time
+                .advance_sim_time_by(browser_seconds_past)
+                .is_some()
+            {
+                model
+                    .simulator
+                    .work_until(&mut model.world, model.time.sim_time());
+                update_animated_objects(&mut model.world, model.time.sim_time());
+            }
+            orders.after_next_render(Msg::Rendered);
+        }
+        Msg::UserPausePlay => {
+            model.time.toggle_paused();
+        }
     }
-}
-
-// ------ ------
-//     View
-// ------ ------
-
-// `view` describes what to display.
-fn view(model: &Model) -> Node<Msg> {
-    div![
-        "This is a counter: ",
-        C!["counter"],
-        button![model.counter, ev(Ev::Click, |_| Msg::Increment),],
-    ]
 }
 
 // ------ ------
