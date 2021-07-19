@@ -1,8 +1,8 @@
 use super::SimSeconds;
 use legion::*;
 
-#[derive(Debug, Clone)]
-pub struct UnderlayNodeId(pub(crate) String); // TODO prettier?
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct UnderlayNodeName(pub(crate) String);
 
 #[derive(Debug, Copy, Clone)]
 pub struct UnderlayPosition {
@@ -17,7 +17,7 @@ impl UnderlayPosition {
     }
 }
 
-pub struct UnderlayPath {
+pub struct UnderlayLine {
     pub start: UnderlayPosition,
     pub end: UnderlayPosition,
 }
@@ -35,7 +35,7 @@ pub struct TimeSpan {
 
 pub fn name(world: &World, entity: Entity) -> &str {
     if let Ok(entry) = world.entry_ref(entity) {
-        if let Ok(node_id) = entry.into_component::<UnderlayNodeId>() {
+        if let Ok(node_id) = entry.into_component::<UnderlayNodeName>() {
             &node_id.0
         } else {
             "UNNAMEABLE"

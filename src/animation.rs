@@ -1,10 +1,8 @@
 #![allow(clippy::cast_possible_truncation)]
 use super::*;
 
-// TODO use legion systems here maybe?
-
 pub fn update_animated_objects(world: &mut World, sim_time: SimSeconds) {
-    let mut query = <(&UnderlayPath, &TimeSpan, &mut UnderlayPosition)>::query();
+    let mut query = <(&UnderlayLine, &TimeSpan, &mut UnderlayPosition)>::query();
 
     for (path, time_span, position) in query.iter_mut(world) {
         let progress =

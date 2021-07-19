@@ -1,7 +1,6 @@
 #![allow(clippy::wildcard_imports)]
 
 use legion::*;
-use ordered_float::OrderedFloat;
 use seed::{prelude::*, *};
 
 mod animation;
@@ -11,7 +10,7 @@ mod view;
 mod world;
 use animation::update_animated_objects;
 use simulator::{SimEvent, Simulator};
-use time::{SimSeconds, TimeKeeper};
+use time::{SimSeconds, Time};
 use view::view;
 use world::*;
 
@@ -28,7 +27,7 @@ static FLIGHT_PER_SECOND: f64 = (NET_MAX_X * 10.) as f64;
 pub struct Model {
     pub world: World,
     pub simulator: Simulator,
-    pub time: TimeKeeper,
+    pub time: Time,
 }
 
 // ------ ------
@@ -40,7 +39,7 @@ fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
     orders.after_next_render(Msg::Rendered);
     let world = World::default();
     let mut simulator = Simulator::new();
-    let time = TimeKeeper::new(0.01);
+    let time = Time::new(0.02);
     simulator.schedule(time.sim_time(), SimEvent::SpawnRandomNodes(100));
     simulator.schedule(time.sim_time(), SimEvent::SpawnRandomMessages(20));
     Model {

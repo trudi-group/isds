@@ -23,7 +23,7 @@ pub fn view(model: &Model) -> impl IntoNodes<Msg> {
                     At::Fill => "red",
                 }]
             }),
-            <&UnderlayPosition>::query().filter(component::<UnderlayNodeId>()).iter(&model.world).map(|pos| {
+            <&UnderlayPosition>::query().filter(component::<UnderlayNodeName>()).iter(&model.world).map(|pos| {
                 circle![attrs! {
                     At::Cx => pos.x,
                     At::Cy => pos.y,

@@ -1,15 +1,14 @@
-#![allow(clippy::module_name_repetitions)]
-use super::OrderedFloat;
+pub use ordered_float::OrderedFloat;
 
 pub type RealSeconds = f64;
-pub type SimSeconds = OrderedFloat<f64>; // TODO make NewType?
+pub type SimSeconds = OrderedFloat<f64>;
 
-pub struct TimeKeeper {
+pub struct Time {
     pub speed_factor: f64,
     sim_time: SimSeconds,
     pub paused: bool,
 }
-impl TimeKeeper {
+impl Time {
     pub const fn new(speed_factor: f64) -> Self {
         Self {
             speed_factor,
@@ -46,7 +45,7 @@ mod tests {
 
     #[wasm_bindgen_test]
     fn timing_realtime() {
-        let mut time = TimeKeeper::new(1.);
+        let mut time = Time::new(1.);
         assert_eq!(time.sim_time(), 0.);
         time.advance_sim_time_by(10.);
         assert_eq!(time.sim_time(), 10.);
@@ -54,7 +53,7 @@ mod tests {
 
     #[wasm_bindgen_test]
     fn timing_halftime() {
-        let mut time = TimeKeeper::new(0.5);
+        let mut time = Time::new(0.5);
         assert_eq!(time.sim_time(), 0.);
         time.advance_sim_time_by(10.);
         assert_eq!(time.sim_time(), 5.);
@@ -62,7 +61,7 @@ mod tests {
 
     #[wasm_bindgen_test]
     fn timing_default_and_speed_change() {
-        let mut time = TimeKeeper::new(10.);
+        let mut time = Time::new(10.);
         assert_eq!(time.sim_time(), 0.);
         time.advance_sim_time_by(10.);
         assert_eq!(time.sim_time(), 100.);
@@ -73,7 +72,7 @@ mod tests {
 
     #[wasm_bindgen_test]
     fn timing_pause_resume() {
-        let mut time = TimeKeeper::new(0.5);
+        let mut time = Time::new(0.5);
         assert_eq!(time.sim_time(), 0.);
         time.advance_sim_time_by(10.);
         assert_eq!(time.sim_time(), 5.);

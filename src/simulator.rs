@@ -43,38 +43,44 @@ impl Simulator {
             self.apply_event(world, sim_time_now, event);
         }
     }
-    pub fn spawn_random_node(&mut self, world: &mut World) {
-        world.push(random_node(&mut self.rng));
+    pub fn spawn_random_node(&mut self, world: &mut World) -> Entity {
+        world.push(random_node(&mut self.rng))
     }
     pub fn spawn_message_between_random_nodes(
         &mut self,
         world: &mut World,
         start_time: SimSeconds,
-    ) {
-        let mut node_ents_query = <Entity>::query().filter(component::<UnderlayNodeId>());
+    ) -> Result<Entity, &str> {
+        let mut node_ents_query = <Entity>::query().filter(component::<UnderlayNodeName>());
         let node_ents: Vec<Entity> = node_ents_query.iter(world).copied().collect();
-        let selected_node_ids: Vec<Entity> = node_ents
-            .choose_multiple(&mut self.rng, 2)
-            .copied()
-            .collect();
-        let source = selected_node_ids[0];
-        let dest = selected_node_ids[1];
-        self.spawn_message(world, start_time, source, dest)
+        if node_ents.len() < 2 {
+            Err("Not enough nodes around.")
+        } else {
+            let selected_node_ids: Vec<Entity> = node_ents
+                .choose_multiple(&mut self.rng, 2)
+                .copied()
+                .collect();
+            let source = selected_node_ids[0];
+            let dest = selected_node_ids[1];
+            Ok(self.spawn_message(world, start_time, source, dest))
+        }
     }
     pub fn spawn_message_to_random_node(
         &mut self,
         world: &mut World,
         start_time: SimSeconds,
         source: Entity,
-    ) {
-        let mut node_ents_query = <Entity>::query().filter(component::<UnderlayNodeId>());
+    ) -> Result<Entity, &str> {
+        let mut node_ents_query = <Entity>::query().filter(component::<UnderlayNodeName>());
         let node_ents: Vec<Entity> = node_ents_query
             .iter(world)
             .filter(|idx| **idx != source)
             .copied()
             .collect();
         if let Some(&dest) = node_ents.choose(&mut self.rng) {
-            self.spawn_message(world, start_time, source, dest);
+            Ok(self.spawn_message(world, start_time, source, dest))
+        } else {
+            Err("Couldn't find a suitable message destination. Not enough nodes around?")
         }
     }
     pub fn spawn_message(
@@ -83,7 +89,7 @@ impl Simulator {
         start_time: SimSeconds,
         source: Entity,
         dest: Entity,
-    ) {
+    ) -> Entity {
         let &pos_source = world
             .entry(source)
             .unwrap()
@@ -99,13 +105,13 @@ impl Simulator {
             f64::from(UnderlayPosition::distance(pos_source, pos_dest)) / FLIGHT_PER_SECOND;
         let end_time = start_time + flight_duration;
 
-        let message_ent = world.push((
+        let message_entity = world.push((
             UnderlayMessage { source, dest },
             TimeSpan {
                 start: start_time,
                 end: end_time,
             },
-            UnderlayPath {
+            UnderlayLine {
                 start: pos_source,
                 end: pos_dest,
             },
@@ -119,7 +125,8 @@ impl Simulator {
                 name(world, dest),
             ),
         );
-        self.schedule(end_time, SimEvent::MessageArrived(message_ent));
+        self.schedule(end_time, SimEvent::MessageArrived(message_entity));
+        message_entity
     }
     fn apply_event(&mut self, world: &mut World, sim_time_now: SimSeconds, event: SimEvent) {
         use SimEvent::*;
@@ -139,7 +146,8 @@ impl Simulator {
                     ),
                 );
                 let new_source = underlay_message.dest;
-                self.spawn_message_to_random_node(world, sim_time_now, new_source);
+                self.spawn_message_to_random_node(world, sim_time_now, new_source)
+                    .unwrap();
                 world.remove(message_ent);
             }
             SpawnRandomNodes(count) => {
@@ -149,7 +157,8 @@ impl Simulator {
             }
             SpawnRandomMessages(count) => {
                 for _ in 0..count {
-                    self.spawn_message_between_random_nodes(world, sim_time_now);
+                    self.spawn_message_between_random_nodes(world, sim_time_now)
+                        .unwrap();
                 }
             }
         }
@@ -180,11 +189,11 @@ impl PartialOrd for TimedEvent {
     }
 }
 
-pub fn random_node(rng: &mut impl Rng) -> (UnderlayNodeId, UnderlayPosition) {
+pub fn random_node(rng: &mut impl Rng) -> (UnderlayNodeName, UnderlayPosition) {
     let name = format!("node{:#04}", rng.gen_range(0..10_000));
     let buffer_zone = 10.;
     (
-        UnderlayNodeId(name),
+        UnderlayNodeName(name),
         UnderlayPosition {
             x: rng.gen_range(buffer_zone..=(NET_MAX_X - buffer_zone)),
             y: rng.gen_range(buffer_zone..=(NET_MAX_Y - buffer_zone)),
@@ -192,10 +201,33 @@ pub fn random_node(rng: &mut impl Rng) -> (UnderlayNodeId, UnderlayPosition) {
     )
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use wasm_bindgen_test::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use wasm_bindgen_test::*;
 
-//     wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
-// }
+    wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
+
+    #[wasm_bindgen_test]
+    fn spawn_random_node_spawns_node() {
+        let mut world = World::default();
+        let mut simulator = Simulator::new();
+        let node_entity = simulator.spawn_random_node(&mut world);
+        let node_entry = world.entry(node_entity).unwrap();
+        assert!(node_entry.get_component::<UnderlayNodeName>().is_ok());
+        assert!(node_entry.get_component::<UnderlayPosition>().is_ok());
+    }
+
+    #[wasm_bindgen_test]
+    fn spawn_message_creates_helper_fields() {
+        let mut world = World::default();
+        let mut simulator = Simulator::new();
+        let node1 = simulator.spawn_random_node(&mut world);
+        let node2 = simulator.spawn_random_node(&mut world);
+        let message_entity =
+            simulator.spawn_message(&mut world, SimSeconds::default(), node1, node2);
+        let message_entry = world.entry(message_entity).unwrap();
+        assert!(message_entry.get_component::<UnderlayLine>().is_ok());
+        assert!(message_entry.get_component::<TimeSpan>().is_ok());
+    }
+}
