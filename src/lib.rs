@@ -1,18 +1,17 @@
 #![allow(clippy::wildcard_imports)]
 
-use legion::*;
 use seed::{prelude::*, *};
 
-mod animation;
-mod simulator;
+use hecs::{Entity, World};
+
+mod sim;
 mod time;
 mod view;
-mod world;
-use animation::update_animated_objects;
-use simulator::{SimEvent, Simulator};
+mod view_helpers;
+use sim::*;
 use time::{SimSeconds, Time};
 use view::view;
-use world::*;
+use view_helpers::{name, update_view_data, ViewCache};
 
 static NET_MAX_X: f32 = 1000.;
 static NET_MAX_Y: f32 = 1000.;
@@ -25,8 +24,9 @@ static FLIGHT_PER_SECOND: f64 = (NET_MAX_X * 10.) as f64;
 
 // `Model` describes our app state.
 pub struct Model {
-    pub world: World,
     pub simulator: Simulator,
+    pub world: World,
+    pub view_cache: ViewCache,
     pub time: Time,
 }
 
@@ -37,15 +37,27 @@ pub struct Model {
 // `init` describes what should happen when your app started.
 fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
     orders.after_next_render(Msg::Rendered);
-    let world = World::default();
     let mut simulator = Simulator::new();
+    let world = World::default();
+    let view_cache = ViewCache::new();
     let time = Time::new(0.02);
-    simulator.schedule(time.sim_time(), SimEvent::SpawnRandomNodes(100));
-    simulator.schedule(time.sim_time(), SimEvent::SpawnRandomMessages(20));
+    simulator.schedule(
+        time.sim_time(),
+        SimEvent::ExternalCommand(SimCommand::SpawnRandomNodes(100)),
+    );
+    simulator.schedule(
+        time.sim_time(),
+        SimEvent::ExternalCommand(SimCommand::SpawnRandomMessages(20)),
+    );
+    simulator.schedule(
+        time.sim_time(),
+        SimEvent::ExternalCommand(SimCommand::FormConnections(200)),
+    );
     Model {
         world,
         simulator,
         time,
+        view_cache,
     }
 }
 
@@ -74,7 +86,11 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 model
                     .simulator
                     .work_until(&mut model.world, model.time.sim_time());
-                update_animated_objects(&mut model.world, model.time.sim_time());
+                update_view_data(
+                    &mut model.world,
+                    &mut model.view_cache,
+                    model.time.sim_time(),
+                );
             }
             orders.after_next_render(Msg::Rendered);
         }

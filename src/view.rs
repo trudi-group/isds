@@ -1,4 +1,5 @@
 use super::*;
+use view_helpers::EdgeType;
 
 // `view` describes what to display.
 #[rustfmt::skip]
@@ -15,7 +16,28 @@ pub fn view(model: &Model) -> impl IntoNodes<Msg> {
                 St::Width => px(NET_MAX_X),
                 St::Height => px(NET_MAX_Y),
             },
-            <&UnderlayPosition>::query().filter(component::<UnderlayMessage>()).iter(&model.world).map(|pos| {
+            // TODO: defs! via https://developer.mozilla.org/en-US/docs/Web/SVG/Element/marker
+            model.view_cache.edges.values().map(|(edge_type, line)| {
+                line_![if *edge_type == EdgeType::Undirected {
+                    attrs! {
+                        At::X1 => line.start.x,
+                        At::Y1 => line.start.y,
+                        At::X2 => line.end.x,
+                        At::Y2 => line.end.y,
+                        At::Stroke => "gray",
+                    }
+                } else {
+                    attrs! {
+                        At::X1 => line.start.x,
+                        At::Y1 => line.start.y,
+                        At::X2 => line.end.x,
+                        At::Y2 => line.end.y,
+                        At::Stroke => "lightgray",
+                        At::StrokeDashArray => "8,8",
+                    }
+                }]
+            }),
+            model.world.query::<(&UnderlayMessage, &UnderlayPosition)>().into_iter().map(|(_, (_, pos))| {
                 circle![attrs! {
                     At::Cx => pos.x,
                     At::Cy => pos.y,
@@ -23,7 +45,7 @@ pub fn view(model: &Model) -> impl IntoNodes<Msg> {
                     At::Fill => "red",
                 }]
             }),
-            <&UnderlayPosition>::query().filter(component::<UnderlayNodeName>()).iter(&model.world).map(|pos| {
+            model.world.query::<(&UnderlayNodeName, &UnderlayPosition)>().into_iter().map(|(_, (_, pos))| {
                 circle![attrs! {
                     At::Cx => pos.x,
                     At::Cy => pos.y,
