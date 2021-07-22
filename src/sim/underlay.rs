@@ -45,47 +45,7 @@ impl Simulator {
     pub fn spawn_random_node(&mut self, world: &mut World) -> Entity {
         world.spawn(random_node(&mut self.rng))
     }
-    pub fn spawn_message_between_random_nodes(
-        &mut self,
-        world: &mut World,
-        start_time: SimSeconds,
-    ) -> Result<Entity, &str> {
-        let node_ents: Vec<Entity> = world
-            .query_mut::<&UnderlayNodeName>()
-            .into_iter()
-            .map(|(id, _)| id)
-            .collect();
-        if node_ents.len() < 2 {
-            Err("Not enough nodes around.")
-        } else {
-            let selected_node_ids: Vec<Entity> = node_ents
-                .choose_multiple(&mut self.rng, 2)
-                .copied()
-                .collect();
-            let source = selected_node_ids[0];
-            let dest = selected_node_ids[1];
-            Ok(self.spawn_message(world, start_time, source, dest))
-        }
-    }
-    pub fn spawn_message_to_random_node(
-        &mut self,
-        world: &mut World,
-        start_time: SimSeconds,
-        source: Entity,
-    ) -> Result<Entity, &str> {
-        let node_ents: Vec<Entity> = world
-            .query_mut::<&UnderlayNodeName>()
-            .into_iter()
-            .map(|(id, _)| id)
-            .filter(|id| *id != source)
-            .collect();
-        if let Some(&dest) = node_ents.choose(&mut self.rng) {
-            Ok(self.spawn_message(world, start_time, source, dest))
-        } else {
-            Err("Couldn't find a suitable message destination. Not enough nodes around?")
-        }
-    }
-    pub fn spawn_message(
+    pub fn send_message(
         &mut self,
         world: &mut World,
         start_time: SimSeconds,
@@ -156,7 +116,7 @@ mod tests {
         let node1 = simulator.spawn_random_node(&mut world);
         let node2 = simulator.spawn_random_node(&mut world);
         let message_entity =
-            simulator.spawn_message(&mut world, SimSeconds::default(), node1, node2);
+            simulator.send_message(&mut world, SimSeconds::default(), node1, node2);
         assert!(world.get::<UnderlayLine>(message_entity).is_ok());
         assert!(world.get::<TimeSpan>(message_entity).is_ok());
     }

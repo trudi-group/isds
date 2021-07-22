@@ -36,13 +36,13 @@ impl EdgeEndpoints {
     }
 }
 
-// update_view_cache?
-pub fn update_view_data(world: &mut World, view_cache: &mut ViewCache, sim_time: SimSeconds) {
-    update_connection_lines(world, view_cache);
+pub fn update_view_data(world: &mut World, view_cache: &mut ViewCache, sim_time: SimSeconds, changes: WorldChanges) {
+    if changes.topology {
+        update_connection_lines(world, view_cache);
+    }
     update_message_positions(world, sim_time);
 }
 
-// TODO add a bool like "topology_changed" as output from simulator (dito for "time advanced"?)
 fn update_connection_lines(world: &World, view_cache: &mut ViewCache) {
     let edges = &mut view_cache.edges;
     edges.clear();

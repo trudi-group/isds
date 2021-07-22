@@ -43,15 +43,15 @@ fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
     let time = Time::new(0.02);
     simulator.schedule(
         time.sim_time(),
-        SimEvent::ExternalCommand(SimCommand::SpawnRandomNodes(100)),
+        SimEvent::ExternalCommand(SimCommand::SpawnRandomNodes(64)),
     );
     simulator.schedule(
         time.sim_time(),
-        SimEvent::ExternalCommand(SimCommand::SpawnRandomMessages(20)),
+        SimEvent::ExternalCommand(SimCommand::SpawnRandomMessages(24)),
     );
     simulator.schedule(
         time.sim_time(),
-        SimEvent::ExternalCommand(SimCommand::FormConnections(200)),
+        SimEvent::ExternalCommand(SimCommand::AddRandomPeersToEachNode(1, 8)),
     );
     Model {
         world,
@@ -83,13 +83,12 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 .advance_sim_time_by(browser_seconds_past)
                 .is_some()
             {
-                model
-                    .simulator
-                    .work_until(&mut model.world, model.time.sim_time());
+                let changes = model.simulator.work_until(&mut model.world, model.time.sim_time());
                 update_view_data(
                     &mut model.world,
                     &mut model.view_cache,
                     model.time.sim_time(),
+                    changes
                 );
             }
             orders.after_next_render(Msg::Rendered);

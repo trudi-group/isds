@@ -1,7 +1,6 @@
 use super::*;
 use std::collections::BTreeSet;
-
-// FIXME rather: "generic"?
+use std::cmp;
 
 pub struct TimeSpan {
     pub start: SimSeconds,
@@ -11,38 +10,84 @@ pub struct TimeSpan {
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct PeerSet(pub BTreeSet<Entity>);
 
+pub fn pick_random_node(world: &mut World, rng: &mut impl Rng) -> Option<Entity> {
+    all_nodes(world).choose(rng).map(|&id| id)
+}
+
+pub fn pick_random_other_node(world: &mut World, rng: &mut impl Rng, node: Entity) -> Option<Entity> {
+    all_other_nodes(world, node).choose(rng).map(|&id| id)
+}
+
+pub fn pick_random_peer(world: &mut World, rng: &mut impl Rng, node: Entity) -> Option<Entity> {
+    peers(world, node).0.iter().choose(rng).map(|&id| id)
+}
+
+pub fn all_nodes(world: &mut World) -> Vec<Entity> {
+    world.query_mut::<&UnderlayNodeName>()
+        .into_iter()
+        .map(|(id, _)| id)
+        .collect()
+}
+
+fn all_other_nodes(world: &mut World, node: Entity) -> Vec<Entity> {
+    world.query_mut::<&UnderlayNodeName>()
+        .into_iter()
+        .map(|(id, _)| id)
+        .filter(|id| *id != node)
+        .collect()
+}
+
 impl Simulator {
-    pub fn form_directed_link_between_two_random_nodes(
+    pub fn add_random_nodes_as_peers(&mut self, world: &mut World, node: Entity, new_peers_min: usize, new_peers_max: usize) {
+        let mut candidates = all_other_nodes(world, node);
+        let mut peers = peers(world, node);
+        candidates.retain(|id| !peers.0.contains(id));
+
+        let new_peers_min = cmp::min(new_peers_min, candidates.len());
+        let new_peers_max = cmp::min(new_peers_max, candidates.len());
+        let number_of_new_peers = self.rng.gen_range(new_peers_min..new_peers_max);
+
+        let new_peers = candidates.choose_multiple(&mut self.rng, number_of_new_peers);
+        for node in new_peers {
+            peers.0.insert(*node);
+        }
+    }
+    pub fn send_message_to_random_node(
         &mut self,
         world: &mut World,
-    ) -> Result<(Entity, Entity), &str> {
-        let node_ents: Vec<Entity> = world
-            .query_mut::<&UnderlayNodeName>()
-            .into_iter()
-            .map(|(id, _)| id)
-            .collect();
-        if node_ents.len() < 2 {
-            Err("Not enough nodes around.")
+        start_time: SimSeconds,
+        source: Entity,
+    ) -> Result<Entity, &str> {
+        if let Some(dest) = pick_random_other_node(world, &mut self.rng, source) {
+            Ok(self.send_message(world, start_time, source, dest))
         } else {
-            let selected_node_ids: Vec<Entity> = node_ents
-                .choose_multiple(&mut self.rng, 2)
-                .copied()
-                .collect();
-            let source = selected_node_ids[0];
-            let dest = selected_node_ids[1];
-            self.add_peer(world, source, dest);
-            Ok((source, dest))
+            Err("Couldn't find a suitable message destination. Not enough nodes around?")
         }
     }
-    pub fn add_peer(&mut self, world: &mut World, node: Entity, peer: Entity) {
-        if let Ok(mut peers) = world.get_mut::<PeerSet>(node) {
-            peers.0.insert(peer);
-            return;
+    pub fn send_message_to_random_peer(
+        &mut self,
+        world: &mut World,
+        start_time: SimSeconds,
+        source: Entity,
+    ) -> Result<Entity, &str> {
+        if let Some(dest) = pick_random_peer(world, &mut self.rng, source) {
+            Ok(self.send_message(world, start_time, source, dest))
+        } else {
+            Err("Couldn't find a suitable message destination. Not enough peers?")
         }
-        let mut peers = PeerSet(BTreeSet::new());
-        peers.0.insert(peer);
+    }
+}
+
+pub fn add_peer(world: &mut World, node: Entity, peer: Entity) {
+    peers(world, node).0.insert(peer);
+}
+
+pub fn peers<'a>(world: &'a mut World, node: Entity) -> hecs::RefMut<'a, PeerSet> {
+    if world.get_mut::<PeerSet>(node).is_err() {
+        let peers = PeerSet(BTreeSet::new());
         world.insert_one(node, peers).unwrap();
     }
+    world.get_mut::<PeerSet>(node).unwrap()
 }
 
 #[cfg(test)]
@@ -53,12 +98,12 @@ mod tests {
     wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
 
     #[wasm_bindgen_test]
-    fn add_peer_forms_a_directed_link() {
+    fn add_peer_adds_peer() {
         let mut world = World::default();
         let mut simulator = Simulator::new();
         let node1 = simulator.spawn_random_node(&mut world);
         let node2 = simulator.spawn_random_node(&mut world);
-        simulator.add_peer(&mut world, node1, node2);
+        add_peer(&mut world, node1, node2);
 
         let expected = PeerSet(vec![node2].into_iter().collect());
         let actual = (*world.get::<PeerSet>(node1).unwrap()).clone();
@@ -67,26 +112,24 @@ mod tests {
     }
 
     #[wasm_bindgen_test]
-    fn form_directed_link_between_two_random_nodes_forms_exactly_one_directed_link() {
+    fn add_random_other_nodes_as_peers_adds_peers() {
         let mut world = World::default();
         let mut simulator = Simulator::new();
+        let node1 = simulator.spawn_random_node(&mut world);
+        simulator.spawn_random_node(&mut world);
+        simulator.spawn_random_node(&mut world);
         simulator.spawn_random_node(&mut world);
         simulator.spawn_random_node(&mut world);
 
-        assert!(world
-            .query_mut::<&PeerSet>()
-            .into_iter()
-            .all(|(_, peer_set)| peer_set.0.is_empty()));
-        simulator
-            .form_directed_link_between_two_random_nodes(&mut world)
-            .unwrap();
-        assert_eq!(
-            1,
-            world
-                .query_mut::<&PeerSet>()
-                .into_iter()
-                .filter(|(_, peer_set)| !peer_set.0.is_empty())
-                .count()
-        );
+        simulator.add_random_nodes_as_peers(&mut world, node1, 2, 3);
+
+        let peers = peers(&mut world, node1);
+        let actual = peers.0.len();
+        let expected_min = 2;
+        let expected_max = 3;
+
+        assert!(expected_min <= actual);
+        assert!(actual <= expected_max);
+        assert!(!peers.0.contains(&node1));
     }
 }
