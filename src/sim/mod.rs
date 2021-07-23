@@ -36,13 +36,22 @@ pub struct WorldChanges {
 }
 impl WorldChanges {
     pub fn none() -> Self {
-        Self { topology: false, new_messages: false }
+        Self {
+            topology: false,
+            new_messages: false,
+        }
     }
     pub fn topology() -> Self {
-        Self { topology: true, ..Self::none() }
+        Self {
+            topology: true,
+            ..Self::none()
+        }
     }
     pub fn new_messages() -> Self {
-        Self { new_messages: true, ..Self::none() }
+        Self {
+            new_messages: true,
+            ..Self::none()
+        }
     }
     pub fn update(&mut self, other: Self) {
         self.topology |= other.topology;
@@ -84,7 +93,12 @@ impl Simulator {
         }
         changes
     }
-    fn apply_event(&mut self, world: &mut World, sim_time_now: SimSeconds, event: SimEvent) -> WorldChanges {
+    fn apply_event(
+        &mut self,
+        world: &mut World,
+        sim_time_now: SimSeconds,
+        event: SimEvent,
+    ) -> WorldChanges {
         use SimCommand::*;
         use SimEvent::*;
         match event {
@@ -115,7 +129,8 @@ impl Simulator {
                 SpawnRandomMessages(count) => {
                     for _ in 0..count {
                         let node = pick_random_node(world, &mut self.rng).unwrap();
-                        self.send_message_to_random_node(world, sim_time_now, node).unwrap();
+                        self.send_message_to_random_node(world, sim_time_now, node)
+                            .unwrap();
                     }
                     WorldChanges::topology()
                 }

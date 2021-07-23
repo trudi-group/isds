@@ -3,6 +3,8 @@
 use seed::{prelude::*, *};
 
 use hecs::{Entity, World};
+use std::cmp;
+use std::collections::{BTreeMap, BTreeSet};
 
 mod sim;
 mod time;
@@ -11,7 +13,7 @@ mod view_helpers;
 use sim::*;
 use time::{SimSeconds, Time};
 use view::view;
-use view_helpers::{name, update_view_data, ViewCache};
+use view_helpers::{name, ViewCache};
 
 static NET_MAX_X: f32 = 1000.;
 static NET_MAX_Y: f32 = 1000.;
@@ -65,7 +67,7 @@ fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
 //    Update
 // ------ ------
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 // `Msg` describes the different events you can modify state with.
 pub enum Msg {
     Rendered(RenderInfo),
@@ -76,21 +78,18 @@ pub enum Msg {
 fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::Rendered(render_info) => {
-            // make sure animations are updated
             let browser_seconds_past = render_info.timestamp_delta.unwrap_or_default() / 1000.;
-            if model
-                .time
-                .advance_sim_time_by(browser_seconds_past)
-                .is_some()
-            {
-                let changes = model.simulator.work_until(&mut model.world, model.time.sim_time());
-                update_view_data(
-                    &mut model.world,
-                    &mut model.view_cache,
-                    model.time.sim_time(),
-                    changes
-                );
-            }
+            model.time.advance_sim_time_by(browser_seconds_past);
+
+            let changes = model
+                .simulator
+                .work_until(&mut model.world, model.time.sim_time());
+
+            // make sure animations are updated
+            model
+                .view_cache
+                .update(&mut model.world, model.time.sim_time(), changes);
+
             orders.after_next_render(Msg::Rendered);
         }
         Msg::UserPausePlay => {

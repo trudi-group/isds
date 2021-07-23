@@ -1,6 +1,4 @@
 use super::*;
-use std::collections::BTreeSet;
-use std::cmp;
 
 pub struct TimeSpan {
     pub start: SimSeconds,
@@ -14,7 +12,11 @@ pub fn pick_random_node(world: &mut World, rng: &mut impl Rng) -> Option<Entity>
     all_nodes(world).choose(rng).map(|&id| id)
 }
 
-pub fn pick_random_other_node(world: &mut World, rng: &mut impl Rng, node: Entity) -> Option<Entity> {
+pub fn pick_random_other_node(
+    world: &mut World,
+    rng: &mut impl Rng,
+    node: Entity,
+) -> Option<Entity> {
     all_other_nodes(world, node).choose(rng).map(|&id| id)
 }
 
@@ -23,14 +25,16 @@ pub fn pick_random_peer(world: &mut World, rng: &mut impl Rng, node: Entity) -> 
 }
 
 pub fn all_nodes(world: &mut World) -> Vec<Entity> {
-    world.query_mut::<&UnderlayNodeName>()
+    world
+        .query_mut::<&UnderlayNodeName>()
         .into_iter()
         .map(|(id, _)| id)
         .collect()
 }
 
 fn all_other_nodes(world: &mut World, node: Entity) -> Vec<Entity> {
-    world.query_mut::<&UnderlayNodeName>()
+    world
+        .query_mut::<&UnderlayNodeName>()
         .into_iter()
         .map(|(id, _)| id)
         .filter(|id| *id != node)
@@ -38,7 +42,13 @@ fn all_other_nodes(world: &mut World, node: Entity) -> Vec<Entity> {
 }
 
 impl Simulator {
-    pub fn add_random_nodes_as_peers(&mut self, world: &mut World, node: Entity, new_peers_min: usize, new_peers_max: usize) {
+    pub fn add_random_nodes_as_peers(
+        &mut self,
+        world: &mut World,
+        node: Entity,
+        new_peers_min: usize,
+        new_peers_max: usize,
+    ) {
         let mut candidates = all_other_nodes(world, node);
         let mut peers = peers(world, node);
         candidates.retain(|id| !peers.0.contains(id));
