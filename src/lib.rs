@@ -4,7 +4,7 @@ use seed::{prelude::*, *};
 
 use hecs::{Entity, World};
 use std::cmp;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 mod sim;
 mod time;
@@ -13,7 +13,7 @@ mod view_helpers;
 use sim::*;
 use time::{SimSeconds, Time};
 use view::view;
-use view_helpers::{name, ViewCache};
+use view_helpers::{name, ViewCache, FPSCounter};
 
 static NET_MAX_X: f32 = 1000.;
 static NET_MAX_Y: f32 = 1000.;
@@ -30,6 +30,7 @@ pub struct Model {
     pub world: World,
     pub view_cache: ViewCache,
     pub time: Time,
+    pub fps: FPSCounter,
 }
 
 // ------ ------
@@ -61,6 +62,7 @@ fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
         simulator,
         time,
         view_cache,
+        fps: FPSCounter::default(),
     }
 }
 
@@ -80,6 +82,8 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::Rendered(render_info) => {
             let browser_seconds_past = render_info.timestamp_delta.unwrap_or_default() / 1000.;
+            model.fps.register_render_interval(browser_seconds_past);
+
             model.time.advance_sim_time_by(browser_seconds_past);
 
             let changes = model

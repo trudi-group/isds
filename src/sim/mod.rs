@@ -1,7 +1,6 @@
 #![allow(clippy::enum_glob_use)]
 use super::*;
 use rand::prelude::*;
-use std::collections::VecDeque;
 
 mod event_queue;
 mod generic;

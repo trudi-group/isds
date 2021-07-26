@@ -4,6 +4,24 @@ use time::*;
 use view::*;
 
 #[derive(Debug, Default)]
+pub struct FPSCounter {
+    time_elapsed: f64,
+    fps_sample: f64,
+}
+impl FPSCounter {
+    pub fn register_render_interval(&mut self, interval: f64) {
+        self.time_elapsed += interval;
+        if self.time_elapsed > 0.5 {
+            self.fps_sample = 1. / interval;
+            self.time_elapsed = 0.;
+        }
+    }
+    pub fn get(&self) -> f64 {
+        self.fps_sample
+    }
+}
+
+#[derive(Debug, Default)]
 pub struct ViewCache {
     last_update: SimSeconds,
     edges: EdgeMap,
