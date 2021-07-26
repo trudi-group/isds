@@ -7,6 +7,11 @@ pub struct TimeSpan {
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct PeerSet(pub BTreeSet<Entity>);
+impl PeerSet {
+    pub fn new() -> Self {
+        Self ( BTreeSet::new() )
+    }
+}
 
 pub fn pick_random_node(world: &mut World, rng: &mut impl Rng) -> Option<Entity> {
     all_nodes(world).choose(rng).map(|&id| id)
@@ -88,13 +93,41 @@ impl Simulator {
     }
 }
 
+pub fn make_delaunay_network(world: &mut World) {
+    use delaunator::{triangulate, Point};
+
+    let (nodes, points): (Vec<Entity>, Vec<Point>) = world
+        .query_mut::<(&UnderlayNodeName, &UnderlayPosition)>()
+        .into_iter()
+        .map(|(id, (_, pos))| (id, Point { x: pos.x as f64, y: pos.y as f64 }))
+        .unzip();
+
+    for &node in nodes.iter() {
+        *peers(world, node) = PeerSet::new();
+    }
+    let triangles = triangulate(&points).expect("No triangulation exists.").triangles;
+    assert!(triangles.len() % 3 == 0);
+
+    for i in (0..triangles.len()).step_by(3) {
+        let node1 = nodes[triangles[i]];
+        let node2 = nodes[triangles[i+1]];
+        let node3 = nodes[triangles[i+2]];
+        add_peer(world, node1, node2);
+        add_peer(world, node1, node3);
+        add_peer(world, node2, node1);
+        add_peer(world, node2, node3);
+        add_peer(world, node3, node1);
+        add_peer(world, node3, node2);
+    }
+}
+
 pub fn add_peer(world: &mut World, node: Entity, peer: Entity) {
     peers(world, node).0.insert(peer);
 }
 
 pub fn peers<'a>(world: &'a mut World, node: Entity) -> hecs::RefMut<'a, PeerSet> {
     if world.get_mut::<PeerSet>(node).is_err() {
-        let peers = PeerSet(BTreeSet::new());
+        let peers = PeerSet::new();
         world.insert_one(node, peers).unwrap();
     }
     world.get_mut::<PeerSet>(node).unwrap()

@@ -27,6 +27,7 @@ pub enum SimCommand {
     SpawnRandomNodes(usize),
     SpawnRandomMessages(usize),
     AddRandomPeersToEachNode(usize, usize),
+    MakeDelaunayNetwork,
 }
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -129,8 +130,10 @@ impl Simulator {
                 SpawnRandomMessages(count) => {
                     for _ in 0..count {
                         let node = pick_random_node(world, &mut self.rng).unwrap();
-                        self.send_message_to_random_node(world, sim_time_now, node)
+                        self.send_message_to_random_peer(world, sim_time_now, node)
                             .unwrap();
+                        // self.send_message_to_random_node(world, sim_time_now, node)
+                        //     .unwrap();
                     }
                     WorldChanges::topology()
                 }
@@ -139,6 +142,10 @@ impl Simulator {
                     for node in nodes.into_iter() {
                         self.add_random_nodes_as_peers(world, node, new_peers_min, new_peers_max);
                     }
+                    WorldChanges::topology()
+                }
+                MakeDelaunayNetwork => {
+                    make_delaunay_network(world);
                     WorldChanges::topology()
                 }
             },

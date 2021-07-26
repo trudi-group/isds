@@ -18,8 +18,10 @@ pub fn view(model: &Model) -> impl IntoNodes<Msg> {
             },
             // model.view_cache.topology(), // based on view_topology below
             // model.view_cache.messages(), // based on view_messages below
-            view_topology(&model.world, &model.view_cache.edges()),
+            // view_topology(&model.world, &model.view_cache.edges()),
+            view_edges(&model.view_cache.edges()),
             view_messages(&model.world),
+            view_nodes(&model.world),
         ],
     ]
 }

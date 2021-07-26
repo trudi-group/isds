@@ -49,11 +49,12 @@ fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
     );
     simulator.schedule(
         time.sim_time(),
-        SimEvent::ExternalCommand(SimCommand::SpawnRandomMessages(24)),
+        // SimEvent::ExternalCommand(SimCommand::AddRandomPeersToEachNode(1, 8)),
+        SimEvent::ExternalCommand(SimCommand::MakeDelaunayNetwork),
     );
     simulator.schedule(
         time.sim_time(),
-        SimEvent::ExternalCommand(SimCommand::AddRandomPeersToEachNode(1, 8)),
+        SimEvent::ExternalCommand(SimCommand::SpawnRandomMessages(24)),
     );
     Model {
         world,

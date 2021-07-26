@@ -19,6 +19,7 @@ seed = "0.8"
 rand = "0.8"
 ordered-float = "2.0"
 hecs = "0.5"
+delaunator = "0.2.1"
 
 [profile.release]
 lto = true
