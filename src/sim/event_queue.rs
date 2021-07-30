@@ -3,16 +3,16 @@ use std::collections::BinaryHeap;
 
 pub type EventQueue = BinaryHeap<TimedEvent>;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct TimedEvent {
-    pub time: SimSeconds,
+    pub time_due: SimSeconds,
     pub event: SimEvent,
 }
 impl Ord for TimedEvent {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         // Ordered by importance:
         // the most important event is the one with the lowest `time_due`...
-        self.time.cmp(&other.time).reverse()
+        self.time_due.cmp(&other.time_due).reverse()
     }
 }
 impl PartialOrd for TimedEvent {

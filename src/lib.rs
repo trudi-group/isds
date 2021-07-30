@@ -2,23 +2,14 @@
 
 use seed::{prelude::*, *};
 
-use hecs::{Entity, World};
-use std::cmp;
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
-
+mod protocols;
 mod sim;
-mod time;
 mod view;
 mod view_helpers;
+use protocols::*;
 use sim::*;
-use time::{SimSeconds, Time};
 use view::view;
-use view_helpers::{name, ViewCache, FPSCounter};
-
-static NET_MAX_X: f32 = 1000.;
-static NET_MAX_Y: f32 = 1000.;
-// This influences message latencies. 100ms for hosts that are very far from each other should be ~realistic.
-static FLIGHT_PER_SECOND: f64 = (NET_MAX_X * 10.) as f64;
+use view_helpers::{FPSCounter, ViewCache};
 
 // ------ ------
 //     Model
@@ -26,10 +17,8 @@ static FLIGHT_PER_SECOND: f64 = (NET_MAX_X * 10.) as f64;
 
 // `Model` describes our app state.
 pub struct Model {
-    pub simulator: Simulator,
-    pub world: World,
+    pub sim: Simulation,
     pub view_cache: ViewCache,
-    pub time: Time,
     pub fps: FPSCounter,
 }
 
@@ -40,28 +29,12 @@ pub struct Model {
 // `init` describes what should happen when your app started.
 fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
     orders.after_next_render(Msg::Rendered);
-    let mut simulator = Simulator::new();
-    let world = World::default();
-    let view_cache = ViewCache::new();
-    let time = Time::new(0.02);
-    simulator.schedule(
-        time.sim_time(),
-        SimEvent::ExternalCommand(SimCommand::SpawnRandomNodes(64)),
-    );
-    simulator.schedule(
-        time.sim_time(),
-        // SimEvent::ExternalCommand(SimCommand::AddRandomPeersToEachNode(1, 8)),
-        SimEvent::ExternalCommand(SimCommand::MakeDelaunayNetwork),
-    );
-    simulator.schedule(
-        time.sim_time(),
-        SimEvent::ExternalCommand(SimCommand::SpawnRandomMessages(24)),
-    );
+    let mut sim = Simulation::new();
+    sim.schedule_immediate(SimEvent::ExternalCommand(SimCommand::SpawnRandomNodes(64)));
+    sim.schedule_immediate(SimEvent::ExternalCommand(SimCommand::MakeDelaunayNetwork));
     Model {
-        world,
-        simulator,
-        time,
-        view_cache,
+        sim,
+        view_cache: ViewCache::new(),
         fps: FPSCounter::default(),
     }
 }
@@ -75,30 +48,33 @@ fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
 pub enum Msg {
     Rendered(RenderInfo),
     UserPausePlay,
+    SimCommand(SimCommand),
 }
 
 // `update` describes how to handle each `Msg`.
 fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::Rendered(render_info) => {
-            let browser_seconds_past = render_info.timestamp_delta.unwrap_or_default() / 1000.;
-            model.fps.register_render_interval(browser_seconds_past);
+            let elapsed_browser_seconds = render_info.timestamp_delta.unwrap_or_default() / 1000.;
+            model.fps.register_render_interval(elapsed_browser_seconds);
 
-            model.time.advance_sim_time_by(browser_seconds_past);
+            model.sim.catch_up(
+                &mut [&mut model.view_cache],
+                &mut [&mut random_walks::Handler {}],
+                elapsed_browser_seconds,
+            );
 
-            let changes = model
-                .simulator
-                .work_until(&mut model.world, model.time.sim_time());
-
-            // make sure animations are updated
             model
                 .view_cache
-                .update(&mut model.world, model.time.sim_time(), changes);
+                .update_messages(&mut model.sim.world, model.sim.time.now());
 
             orders.after_next_render(Msg::Rendered);
         }
         Msg::UserPausePlay => {
-            model.time.toggle_paused();
+            model.sim.time.toggle_paused();
+        }
+        Msg::SimCommand(cmd) => {
+            model.sim.schedule_immediate(SimEvent::ExternalCommand(cmd));
         }
     }
 }

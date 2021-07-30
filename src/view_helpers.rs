@@ -1,7 +1,10 @@
 #![allow(clippy::cast_possible_truncation)]
+
+use protocols::generic::PeerSet;
+use std::collections::btree_map::Entry;
+use std::collections::BTreeMap;
+
 use super::*;
-use time::*;
-use view::*;
 
 #[derive(Debug, Default)]
 pub struct FPSCounter {
@@ -23,45 +26,18 @@ impl FPSCounter {
 
 #[derive(Debug, Default)]
 pub struct ViewCache {
-    last_update: SimSeconds,
     edges: EdgeMap,
-    // topology: Vec<Node<Msg>>,
-    // messages: Vec<Node<Msg>>,
 }
 impl ViewCache {
     pub fn new() -> Self {
         Self {
-            last_update: OrderedFloat(f64::MIN), // TODO: call this SimSeconds::never(),
             edges: BTreeMap::new(),
-            // topology: Vec::new(),
-            // messages: Vec::new(),
         }
     }
-    // pub fn topology<'a>(&'a self) -> &'a [Node<Msg>] {
-    //     &self.topology
-    // }
-    // pub fn messages<'a>(&'a self) -> &'a [Node<Msg>] {
-    //     &self.messages
-    // }
-    pub fn edges<'a>(&'a self) -> &EdgeMap {
+    pub fn edges(&self) -> &EdgeMap {
         &self.edges
     }
-    pub fn update(&mut self, world: &mut World, sim_time: SimSeconds, changes: WorldChanges) {
-        if sim_time == self.last_update {
-            return;
-        }
-        self.last_update = sim_time;
-
-        if changes.topology {
-            self.update_topology(world);
-        }
-        self.update_messages(world, sim_time);
-    }
-    fn update_topology(&mut self, world: &World) {
-        self.rebuild_edges(world);
-        // self.topology = view_topology(world, &self.edges);
-    }
-    fn update_messages(&mut self, world: &mut World, sim_time: SimSeconds) {
+    pub fn update_messages(&mut self, world: &mut World, sim_time: SimSeconds) {
         update_message_positions(world, sim_time);
         // self.messages = view_messages(world);
     }
@@ -72,20 +48,33 @@ impl ViewCache {
         for (node, peer_set) in world.query::<&PeerSet>().iter() {
             for &peer in peer_set.0.iter() {
                 let endpoints = EdgeEndpoints::new(node, peer);
-                if edges.contains_key(&endpoints) {
-                    let (_type, _) = edges.get_mut(&endpoints).unwrap();
-                    *_type = EdgeType::Undirected;
-                } else {
-                    let _type = if endpoints.left == node {
-                        EdgeType::LeftRight
-                    } else {
-                        EdgeType::RightLeft
-                    };
-                    let line = UnderlayLine::from_nodes(world, node, peer);
-                    edges.insert(endpoints, (_type, line));
+                match edges.entry(endpoints) {
+                    Entry::Occupied(mut e) => e.get_mut().0 = EdgeType::Undirected,
+                    Entry::Vacant(e) => {
+                        let _type = if endpoints.left == node {
+                            EdgeType::LeftRight
+                        } else {
+                            EdgeType::RightLeft
+                        };
+                        let line = UnderlayLine::from_nodes(world, node, peer);
+                        e.insert((_type, line));
+                    }
                 }
             }
         }
+    }
+}
+impl sim::EventHandler for ViewCache {
+    fn handle_event(&mut self, sim: &Simulation, event: SimEvent) -> Result<(), Box<dyn Error>> {
+        if let SimEvent::ExternalCommand(command) = event {
+            if matches!(
+                command,
+                SimCommand::MakeDelaunayNetwork | SimCommand::AddRandomPeersToEachNode(_, _)
+            ) {
+                self.rebuild_edges(&sim.world);
+            }
+        }
+        Ok(())
     }
 }
 
@@ -122,19 +111,6 @@ fn update_message_positions(world: &mut World, sim_time: SimSeconds) {
         // clippy said that `mul_add` could be faster...
         position.x = (path.end.x - path.start.x).mul_add(progress, path.start.x);
         position.y = (path.end.y - path.start.y).mul_add(progress, path.start.y);
-    }
-}
-
-// FIXME rather somewhere else?
-pub fn name(world: &World, entity: Entity) -> String {
-    if let Ok(entity_ref) = world.entity(entity) {
-        if let Some(node_name) = entity_ref.get::<UnderlayNodeName>() {
-            format!("{}", node_name.0)
-        } else {
-            format!("UNNAMEABLE ({})", entity.id())
-        }
-    } else {
-        format!("INEXISTING ({})", entity.id())
     }
 }
 
