@@ -3,10 +3,10 @@ use std::collections::BinaryHeap;
 
 pub type EventQueue = BinaryHeap<TimedEvent>;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TimedEvent {
     pub time_due: SimSeconds,
-    pub event: SimEvent,
+    pub event: Event,
 }
 impl Ord for TimedEvent {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {

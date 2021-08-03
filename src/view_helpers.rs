@@ -1,6 +1,5 @@
 #![allow(clippy::cast_possible_truncation)]
 
-use protocols::generic::PeerSet;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 
@@ -65,14 +64,10 @@ impl ViewCache {
     }
 }
 impl sim::EventHandler for ViewCache {
-    fn handle_event(&mut self, sim: &Simulation, event: SimEvent) -> Result<(), Box<dyn Error>> {
-        if let SimEvent::ExternalCommand(command) = event {
-            if matches!(
-                command,
-                SimCommand::MakeDelaunayNetwork | SimCommand::AddRandomPeersToEachNode(_, _)
-            ) {
-                self.rebuild_edges(&sim.world);
-            }
+    fn handle_event(&mut self, sim: &Simulation, event: Event) -> Result<(), Box<dyn Error>> {
+        if let Event::Command(_) = event {
+            // FIXME: How this now?
+            self.rebuild_edges(&sim.world);
         }
         Ok(())
     }

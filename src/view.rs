@@ -30,16 +30,14 @@ fn view_nodes(world: &World) -> Vec<Node<Msg>> {
     world
         .query::<(&UnderlayNodeName, &UnderlayPosition)>()
         .into_iter()
-        .map(|(id, (_, pos))| {
+        .map(|(node, (_, pos))| {
             circle![
                 attrs! {
                     At::Cx => pos.x,
                     At::Cy => pos.y,
                     At::R => 5.0,
                 },
-                ev(Ev::Click, move |_| Msg::SimCommand(
-                    SimCommand::StartRandomWalk(id, 1024)
-                )),
+                ev(Ev::Click, move |_| Msg::Poke(node)),
             ]
         })
         .collect()

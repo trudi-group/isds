@@ -20,6 +20,7 @@ rand = "0.8"
 ordered-float = "2.0"
 hecs = "0.6"
 delaunator = "0.2.1"
+dyn-clone = "1.0.4"
 
 [profile.release]
 lto = true

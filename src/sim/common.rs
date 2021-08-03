@@ -3,6 +3,24 @@ use super::*;
 use std::cmp;
 use std::collections::BTreeSet;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Poke(pub Entity);
+impl Command for Poke {
+    fn execute(&self, sim: &mut Simulation) -> Result<(), Box<dyn Error>> {
+        sim.schedule_now(Event::Node(self.0, NodeEvent::Poke));
+        Ok(())
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct MakeDelaunayNetwork;
+impl Command for MakeDelaunayNetwork {
+    fn execute(&self, sim: &mut Simulation) -> Result<(), Box<dyn Error>> {
+        make_delaunay_network(sim);
+        Ok(())
+    }
+}
+
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct PeerSet(pub BTreeSet<Entity>);
 impl PeerSet {
@@ -11,20 +29,39 @@ impl PeerSet {
     }
 }
 
-pub fn pick_random_peer(sim: &mut Simulation, node: Entity) -> Option<Entity> {
-    let peers = peers(sim, node).0.clone(); // TODO: the `.clone()` here is not ideal
-    peers.iter().choose(&mut sim.rng).copied()
-}
-
-pub fn send_message_to_random_peer<P: hecs::Component>(
-    sim: &mut Simulation,
-    source: Entity,
-    payload: P,
-) -> Result<Entity, String> {
-    if let Some(dest) = pick_random_peer(sim, source) {
-        Ok(sim.send_message(source, dest, payload))
-    } else {
-        Err("Couldn't find a suitable message destination. Not enough peers?".into())
+fn make_delaunay_network(sim: &mut Simulation) {
+    use delaunator::{triangulate, Point};
+    let (nodes, points): (Vec<Entity>, Vec<Point>) = sim
+        .world
+        .query_mut::<(&UnderlayNodeName, &UnderlayPosition)>()
+        .into_iter()
+        .map(|(id, (_, pos))| {
+            (
+                id,
+                Point {
+                    x: pos.x as f64,
+                    y: pos.y as f64,
+                },
+            )
+        })
+        .unzip();
+    for &node in nodes.iter() {
+        *peers(sim, node) = PeerSet::new();
+    }
+    let triangles = triangulate(&points)
+        .expect("No triangulation exists.")
+        .triangles;
+    assert!(triangles.len() % 3 == 0);
+    for i in (0..triangles.len()).step_by(3) {
+        let node1 = nodes[triangles[i]];
+        let node2 = nodes[triangles[i + 1]];
+        let node3 = nodes[triangles[i + 2]];
+        add_peer(sim, node1, node2);
+        add_peer(sim, node1, node3);
+        add_peer(sim, node2, node1);
+        add_peer(sim, node2, node3);
+        add_peer(sim, node3, node1);
+        add_peer(sim, node3, node2);
     }
 }
 
@@ -45,45 +82,6 @@ pub fn add_random_nodes_as_peers(
     let new_peers = candidates.choose_multiple(&mut sim.rng, number_of_new_peers);
     for &peer in new_peers {
         add_peer(sim, node, peer);
-    }
-}
-
-pub fn make_delaunay_network(sim: &mut Simulation) {
-    use delaunator::{triangulate, Point};
-
-    let (nodes, points): (Vec<Entity>, Vec<Point>) = sim
-        .world
-        .query_mut::<(&UnderlayNodeName, &UnderlayPosition)>()
-        .into_iter()
-        .map(|(id, (_, pos))| {
-            (
-                id,
-                Point {
-                    x: pos.x as f64,
-                    y: pos.y as f64,
-                },
-            )
-        })
-        .unzip();
-
-    for &node in nodes.iter() {
-        *peers(sim, node) = PeerSet::new();
-    }
-    let triangles = triangulate(&points)
-        .expect("No triangulation exists.")
-        .triangles;
-    assert!(triangles.len() % 3 == 0);
-
-    for i in (0..triangles.len()).step_by(3) {
-        let node1 = nodes[triangles[i]];
-        let node2 = nodes[triangles[i + 1]];
-        let node3 = nodes[triangles[i + 2]];
-        add_peer(sim, node1, node2);
-        add_peer(sim, node1, node3);
-        add_peer(sim, node2, node1);
-        add_peer(sim, node2, node3);
-        add_peer(sim, node3, node1);
-        add_peer(sim, node3, node2);
     }
 }
 

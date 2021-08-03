@@ -1,5 +1,16 @@
 use super::*;
 
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct SpawnRandomNodes(pub usize);
+impl Command for SpawnRandomNodes {
+    fn execute(&self, sim: &mut Simulation) -> Result<(), Box<dyn Error>> {
+        for _ in 0..self.0 {
+            sim.spawn_random_node();
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct UnderlayConfig {
     width: f32,
@@ -74,9 +85,7 @@ impl Simulation {
         self.all_nodes().choose(&mut self.rng).copied()
     }
     pub fn pick_random_other_node(&mut self, node: Entity) -> Option<Entity> {
-        self.all_other_nodes(node)
-            .choose(&mut self.rng)
-            .copied()
+        self.all_other_nodes(node).choose(&mut self.rng).copied()
     }
     pub fn all_nodes(&mut self) -> Vec<Entity> {
         self.world
@@ -122,7 +131,10 @@ impl Simulation {
             self.name(source),
             self.name(dest),
         ));
-        self.schedule_at(end_time, SimEvent::MessageArrived(message_entity));
+        self.schedule_at(
+            end_time,
+            Event::Node(dest, NodeEvent::MessageArrived(message_entity)),
+        );
         message_entity
     }
 }

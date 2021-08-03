@@ -20,6 +20,7 @@ pub struct Model {
     pub sim: Simulation,
     pub view_cache: ViewCache,
     pub fps: FPSCounter,
+    pub protocol: protocols::random_walks::RandomWalks,
 }
 
 // ------ ------
@@ -30,12 +31,13 @@ pub struct Model {
 fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
     orders.after_next_render(Msg::Rendered);
     let mut sim = Simulation::new();
-    sim.schedule_immediate(SimEvent::ExternalCommand(SimCommand::SpawnRandomNodes(64)));
-    sim.schedule_immediate(SimEvent::ExternalCommand(SimCommand::MakeDelaunayNetwork));
+    sim.do_now(SpawnRandomNodes(64));
+    sim.do_now(MakeDelaunayNetwork);
     Model {
         sim,
         view_cache: ViewCache::new(),
         fps: FPSCounter::default(),
+        protocol: random_walks::RandomWalks::new(1024),
     }
 }
 
@@ -48,7 +50,7 @@ fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
 pub enum Msg {
     Rendered(RenderInfo),
     UserPausePlay,
-    SimCommand(SimCommand),
+    Poke(Entity),
 }
 
 // `update` describes how to handle each `Msg`.
@@ -60,10 +62,11 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 
             model.sim.catch_up(
                 &mut [&mut model.view_cache],
-                &mut [&mut random_walks::Handler {}],
+                &mut [&mut model.protocol],
                 elapsed_browser_seconds,
             );
 
+            // FIXME
             model
                 .view_cache
                 .update_messages(&mut model.sim.world, model.sim.time.now());
@@ -73,8 +76,8 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::UserPausePlay => {
             model.sim.time.toggle_paused();
         }
-        Msg::SimCommand(cmd) => {
-            model.sim.schedule_immediate(SimEvent::ExternalCommand(cmd));
+        Msg::Poke(node) => {
+            model.sim.do_now(Poke(node));
         }
     }
 }
