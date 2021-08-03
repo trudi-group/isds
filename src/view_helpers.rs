@@ -36,10 +36,6 @@ impl ViewCache {
     pub fn edges(&self) -> &EdgeMap {
         &self.edges
     }
-    pub fn update_messages(&mut self, world: &mut World, sim_time: SimSeconds) {
-        update_message_positions(world, sim_time);
-        // self.messages = view_messages(world);
-    }
     fn rebuild_edges(&mut self, world: &World) {
         let edges = &mut self.edges;
         edges.clear();
@@ -66,7 +62,7 @@ impl ViewCache {
 impl sim::EventHandler for ViewCache {
     fn handle_event(&mut self, sim: &Simulation, event: Event) -> Result<(), Box<dyn Error>> {
         if let Event::Command(_) = event {
-            // FIXME: How this now?
+            // TODO: We probably don't want to do this *that* often.
             self.rebuild_edges(&sim.world);
         }
         Ok(())
@@ -94,18 +90,6 @@ impl EdgeEndpoints {
             (node2, node1)
         };
         Self { left, right }
-    }
-}
-
-fn update_message_positions(world: &mut World, sim_time: SimSeconds) {
-    for (_, (path, time_span, position)) in
-        world.query_mut::<(&UnderlayLine, &TimeSpan, &mut UnderlayPosition)>()
-    {
-        let progress =
-            ((sim_time - time_span.start) / (time_span.end - time_span.start)).into_inner() as f32;
-        // clippy said that `mul_add` could be faster...
-        position.x = (path.end.x - path.start.x).mul_add(progress, path.start.x);
-        position.y = (path.end.y - path.start.y).mul_add(progress, path.start.y);
     }
 }
 

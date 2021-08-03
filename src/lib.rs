@@ -33,6 +33,7 @@ fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
     let mut sim = Simulation::new();
     sim.do_now(SpawnRandomNodes(64));
     sim.do_now(MakeDelaunayNetwork);
+    sim.do_now(PokeMultipleRandom(64));
     Model {
         sim,
         view_cache: ViewCache::new(),
@@ -65,12 +66,6 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 &mut [&mut model.protocol],
                 elapsed_browser_seconds,
             );
-
-            // FIXME
-            model
-                .view_cache
-                .update_messages(&mut model.sim.world, model.sim.time.now());
-
             orders.after_next_render(Msg::Rendered);
         }
         Msg::UserPausePlay => {

@@ -114,8 +114,6 @@ impl Simulation {
         let start_time = self.time.now();
         let end_time = start_time + flight_duration;
 
-        let position = trajectory.start; // FIXME try perf without me
-
         let message_entity = self.world.spawn((
             UnderlayMessage { source, dest },
             TimeSpan {
@@ -123,7 +121,6 @@ impl Simulation {
                 end: end_time,
             },
             trajectory,
-            position,
             payload,
         ));
         self.log(format!(

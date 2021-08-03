@@ -2,11 +2,6 @@ use super::*;
 
 #[derive(Debug, Default)]
 pub struct Despawner;
-impl Despawner {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
 impl EventHandlerMut for Despawner {
     fn handle_event(&mut self, sim: &mut Simulation, event: Event) -> Result<(), Box<dyn Error>> {
         match event {

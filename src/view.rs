@@ -19,7 +19,7 @@ pub fn view(model: &Model) -> impl IntoNodes<Msg> {
                 St::Height => px(model.sim.underlay_height()),
             },
             view_edges(model.view_cache.edges()),
-            view_messages(&model.sim.world),
+            view_messages(&model.sim.world, sim_time),
             view_nodes(&model.sim.world),
         ],
         view_log(model.sim.logger.entries()),
@@ -70,15 +70,15 @@ fn view_edges(edges: &BTreeMap<EdgeEndpoints, (EdgeType, UnderlayLine)>) -> Vec<
         .collect()
 }
 
-fn view_messages(world: &World) -> Vec<Node<Msg>> {
-    // TODO evaluate how bad it would be to calculate the position here
+fn view_messages(world: &World, time_now: SimSeconds) -> Vec<Node<Msg>> {
     world
-        .query::<(&UnderlayMessage, &UnderlayPosition)>()
+        .query::<(&UnderlayLine, &TimeSpan)>()
         .into_iter()
-        .map(|(_, (_, pos))| {
+        .map(|(_, (trajectory, time_span))| {
+            let (x, y) = message_position(trajectory, time_span, time_now);
             circle![attrs! {
-                At::Cx => pos.x,
-                At::Cy => pos.y,
+                At::Cx => x,
+                At::Cy => y,
                 At::R => 2.0,
                 At::Fill => "red",
             }]
@@ -92,4 +92,16 @@ fn view_log<'a>(
     pre![message_log
         .rev()
         .map(|(time, message)| { format!("{:.3}: {}\n", time, message) })]
+}
+
+fn message_position(
+    trajectory: &UnderlayLine,
+    time_span: &TimeSpan,
+    time_now: SimSeconds,
+) -> (f32, f32) {
+    let progress = time_span.progress(time_now) as f32;
+    // clippy said that `mul_add` could be faster...
+    let x = (trajectory.end.x - trajectory.start.x).mul_add(progress, trajectory.start.x);
+    let y = (trajectory.end.y - trajectory.start.y).mul_add(progress, trajectory.start.y);
+    (x, y)
 }

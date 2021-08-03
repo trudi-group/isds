@@ -43,6 +43,11 @@ pub struct TimeSpan {
     pub start: SimSeconds,
     pub end: SimSeconds,
 }
+impl TimeSpan {
+    pub fn progress(&self, time_now: SimSeconds) -> f64 {
+        ((time_now - self.start) / (self.end - self.start)).into_inner()
+    }
+}
 
 #[cfg(test)]
 mod tests {
