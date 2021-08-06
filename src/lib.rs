@@ -20,7 +20,7 @@ pub struct Model {
     pub sim: Simulation,
     pub view_cache: ViewCache,
     pub fps: FPSCounter,
-    pub protocol: protocols::random_walks::RandomWalks,
+    pub node_logic: Box<dyn EventHandlerMut>,
 }
 
 // ------ ------
@@ -38,7 +38,10 @@ fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
         sim,
         view_cache: ViewCache::new(),
         fps: FPSCounter::default(),
-        protocol: random_walks::RandomWalks::new(1024),
+        // node_logic: Box::new(InvokeProtocolForAllNodes(random_walks::RandomWalks::new(1024))),
+        node_logic: Box::new(InvokeProtocolForAllNodes(
+            simple_flooding::SimpleFlooding::<u32>::default(),
+        )),
     }
 }
 
@@ -51,7 +54,7 @@ fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
 pub enum Msg {
     Rendered(RenderInfo),
     UserPausePlay,
-    Poke(Entity),
+    NodeClick(Entity),
 }
 
 // `update` describes how to handle each `Msg`.
@@ -62,8 +65,8 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             model.fps.register_render_interval(elapsed_browser_seconds);
 
             model.sim.catch_up(
+                &mut [&mut *model.node_logic],
                 &mut [&mut model.view_cache],
-                &mut [&mut model.protocol],
                 elapsed_browser_seconds,
             );
             orders.after_next_render(Msg::Rendered);
@@ -71,8 +74,14 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::UserPausePlay => {
             model.sim.time.toggle_paused();
         }
-        Msg::Poke(node) => {
-            model.sim.do_now(Poke(node));
+        Msg::NodeClick(node) => {
+            // model.sim.do_now(Poke(node));
+            model
+                .sim
+                .do_now(protocols::simple_flooding::StartSimpleFlooding(
+                    node,
+                    rand::random::<u32>(),
+                ));
         }
     }
 }

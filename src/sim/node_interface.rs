@@ -10,11 +10,11 @@ impl<'a> NodeInterface<'a> {
     pub fn new(sim: &'a mut Simulation, node: Entity) -> Self {
         Self { sim, node }
     }
-    pub fn get<T: 'static + Sync + Send + Default>(&mut self) -> QueryItem<&T> {
+    pub fn get<T: Payload + Default>(&mut self) -> QueryItem<&mut T> {
         if self.sim.world.query_one_mut::<&T>(self.node).is_err() {
             self.sim.world.insert_one(self.node, T::default()).unwrap();
         }
-        self.sim.world.query_one_mut::<&T>(self.node).unwrap()
+        self.sim.world.query_one_mut::<&mut T>(self.node).unwrap()
     }
     pub fn log(&mut self, message: &str) {
         self.sim
@@ -29,8 +29,18 @@ impl<'a> NodeInterface<'a> {
     }
 }
 
+impl Simulation {
+    pub fn node_interface(&mut self, node: Entity) -> NodeInterface {
+        NodeInterface::new(self, node)
+    }
+}
+
+// A type alias...
+pub trait Payload: 'static + Send + Sync + Clone {}
+impl<T> Payload for T where T: 'static + Send + Sync + Clone {}
+
 pub trait Protocol {
-    type MessagePayload: 'static + Send + Sync + Clone;
+    type MessagePayload: Payload;
 
     fn handle_message(
         &self,
@@ -40,7 +50,10 @@ pub trait Protocol {
     ) -> Result<(), Box<dyn Error>>;
 
     fn handle_poke(&self, node: NodeInterface) -> Result<(), Box<dyn Error>>;
+}
 
+pub struct InvokeProtocolForAllNodes<P: Protocol>(pub P);
+impl<P: Protocol> InvokeProtocolForAllNodes<P> {
     fn handle_node_event(
         &mut self,
         sim: &mut Simulation,
@@ -51,19 +64,20 @@ pub trait Protocol {
             NodeEvent::MessageArrived(message) => {
                 let (underlay_message, payload) = sim
                     .world
-                    .query_one_mut::<(&UnderlayMessage, &Self::MessagePayload)>(message)
-                    .unwrap();
+                    .query_one_mut::<(&UnderlayMessage, &P::MessagePayload)>(message)
+                    .unwrap(); // FIXME this will break if we use multiple protocols
                 let (underlay_message, payload) = (*underlay_message, payload.clone());
                 sim.log(format!(
                     "{}: Got message from {}",
                     sim.name(node),
                     sim.name(underlay_message.source),
                 ));
-                self.handle_message(NodeInterface::new(sim, node), underlay_message, payload)?;
+                self.0
+                    .handle_message(NodeInterface::new(sim, node), underlay_message, payload)?;
             }
             NodeEvent::Poke => {
                 sim.log(format!("{}: Got poked!", sim.name(node)));
-                self.handle_poke(NodeInterface::new(sim, node))?;
+                self.0.handle_poke(NodeInterface::new(sim, node))?;
             }
             NodeEvent::TimerFired(_) => {
                 todo!();
@@ -72,8 +86,7 @@ pub trait Protocol {
         Ok(())
     }
 }
-
-impl<P: Protocol> EventHandlerMut for P {
+impl<P: Protocol> EventHandlerMut for InvokeProtocolForAllNodes<P> {
     fn handle_event(&mut self, sim: &mut Simulation, event: Event) -> Result<(), Box<dyn Error>> {
         if let Event::Node(node, event) = event {
             self.handle_node_event(sim, node, event)

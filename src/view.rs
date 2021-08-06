@@ -37,7 +37,7 @@ fn view_nodes(world: &World) -> Vec<Node<Msg>> {
                     At::Cy => pos.y,
                     At::R => 5.0,
                 },
-                ev(Ev::Click, move |_| Msg::Poke(node)),
+                ev(Ev::Click, move |_| Msg::NodeClick(node)),
             ]
         })
         .collect()

@@ -71,20 +71,20 @@ impl Simulation {
     }
     pub fn catch_up(
         &mut self,
-        event_handlers: &mut [&mut dyn EventHandler],
         event_handlers_mut: &mut [&mut dyn EventHandlerMut],
+        event_handlers: &mut [&mut dyn EventHandler],
         elapsed_real_time: RealSeconds,
     ) {
         self.work_until(
-            event_handlers,
             event_handlers_mut,
+            event_handlers,
             self.time.after(elapsed_real_time),
         )
     }
     fn work_until(
         &mut self,
-        event_handlers: &mut [&mut dyn EventHandler],
         event_handlers_mut: &mut [&mut dyn EventHandlerMut],
+        event_handlers: &mut [&mut dyn EventHandler],
         sim_time: SimSeconds,
     ) {
         while self
@@ -95,7 +95,7 @@ impl Simulation {
         {
             let TimedEvent { time_due, event } = self.event_queue.pop().unwrap();
             self.time.advance_sim_time_to(time_due);
-            if let Err(e) = self.handle_event(event_handlers, event_handlers_mut, event) {
+            if let Err(e) = self.handle_event(event_handlers_mut, event_handlers, event) {
                 self.log(format!("Error handling event: {}", e));
             }
         }
@@ -103,8 +103,8 @@ impl Simulation {
     }
     fn handle_event(
         &mut self,
-        event_handlers: &mut [&mut dyn EventHandler],
         event_handlers_mut: &mut [&mut dyn EventHandlerMut],
+        event_handlers: &mut [&mut dyn EventHandler],
         event: Event,
     ) -> Result<(), Box<dyn Error>> {
         command::Handler.handle_event(self, event)?;
