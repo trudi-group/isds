@@ -42,18 +42,19 @@ impl<T: Payload + Default + Hash + Eq> Protocol for SimpleFlooding<T> {
         Ok(())
     }
     fn handle_poke(&self, mut node: NodeInterface) -> Result<(), Box<dyn Error>> {
-        node.log("Got poked. So what?");
+        node.log("Got poked. So what? Will init my state at least.");
+        node.get::<SimpleFloodingState<T>>();
         Ok(())
     }
 }
 
 #[derive(Debug, Default, Clone)]
-pub struct SimpleFloodingMessage<T>(T);
+pub struct SimpleFloodingMessage<T>(pub T);
 
 // TODO: also clear messages from seen set at some point? or isn't that "simple" anymore?
 #[derive(Debug, Default, Clone)]
 pub struct SimpleFloodingState<T> {
-    own_haves: HashSet<T>,
+    pub own_haves: HashSet<T>,
     peer_haves: HashMap<Entity, HashSet<T>>,
 }
 

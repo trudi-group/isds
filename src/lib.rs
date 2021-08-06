@@ -31,9 +31,9 @@ pub struct Model {
 fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
     orders.after_next_render(Msg::Rendered);
     let mut sim = Simulation::new();
-    sim.do_now(SpawnRandomNodes(64));
+    sim.do_now(SpawnRandomNodes(32));
     sim.do_now(MakeDelaunayNetwork);
-    sim.do_now(PokeMultipleRandom(64));
+    sim.do_now(PokeMultipleRandom(32));
     Model {
         sim,
         view_cache: ViewCache::new(),
