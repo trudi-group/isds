@@ -36,7 +36,7 @@ fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
     sim.do_now(PokeMultipleRandom(32));
     Model {
         sim,
-        view_cache: ViewCache::new(),
+        view_cache: ViewCache::default(),
         fps: FPSCounter::default(),
         // node_logic: Box::new(InvokeProtocolForAllNodes(random_walks::RandomWalks::new(1024))),
         node_logic: Box::new(InvokeProtocolForAllNodes(
