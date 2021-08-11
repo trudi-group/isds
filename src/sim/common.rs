@@ -1,5 +1,6 @@
 use super::*;
 
+use rand_distr::{Distribution, Normal};
 use std::cmp;
 use std::collections::BTreeSet;
 
@@ -37,6 +38,47 @@ impl Command for PokeEachNode {
         Ok(())
     }
 }
+
+pub struct ContinuousAutomaticNodePoker {
+    timer_entity: Entity,
+    poke_interval_distribution: Normal<f64>,
+}
+impl ContinuousAutomaticNodePoker {
+    pub fn new(sim: &mut Simulation, mean_poke_interval: f64) -> Self {
+        let timer_entity = sim.world.spawn((PokeTimer,));
+        let poke_interval_distribution = Normal::new(mean_poke_interval, 1.).unwrap();
+        let new_self = Self {
+            timer_entity,
+            poke_interval_distribution,
+        };
+        new_self.schedule_next_poke(sim);
+        new_self
+    }
+    fn schedule_next_poke(&self, sim: &mut Simulation) {
+        let next_poke_in = self.random_wait(&mut sim.rng);
+        sim.log(format!("Next automatic poke in {:.3}...", next_poke_in));
+        sim.schedule_in(next_poke_in, Event::Generic(self.timer_entity));
+    }
+    fn random_wait(&self, rng: &mut impl Rng) -> SimSeconds {
+        let time = OrderedFloat(self.poke_interval_distribution.sample(rng));
+        cmp::max(OrderedFloat(f64::EPSILON), time)
+    }
+}
+impl EventHandlerMut for ContinuousAutomaticNodePoker {
+    fn handle_event(&mut self, sim: &mut Simulation, event: Event) -> Result<(), Box<dyn Error>> {
+        if let Event::Generic(entity) = event {
+            if entity == self.timer_entity {
+                let node = sim
+                    .pick_random_node()
+                    .ok_or_else(|| "Not enough nodes?".to_string())?;
+                sim.schedule_now(Event::Node(node, NodeEvent::Poke));
+                self.schedule_next_poke(sim);
+            }
+        }
+        Ok(())
+    }
+}
+struct PokeTimer;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct MakeDelaunayNetwork;

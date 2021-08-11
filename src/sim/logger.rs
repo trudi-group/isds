@@ -13,7 +13,7 @@ impl Logger {
         }
     }
     pub fn log(&mut self, sim_time: SimSeconds, message: String) {
-        // seed::log!(format!("{}: {}", sim_time, message));
+        seed::log!(format!("{}: {}", sim_time, message));
         self.log.push_front((sim_time, message));
         self.log.truncate(12);
     }

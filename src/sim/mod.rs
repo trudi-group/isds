@@ -53,7 +53,7 @@ impl Simulation {
     pub fn new() -> Self {
         Self {
             world: World::new(),
-            time: Time::new(0.02),
+            time: Time::new(0.1),
             rng: rand::thread_rng(),
             logger: Logger::new(),
             event_queue: EventQueue::new(),
