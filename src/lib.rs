@@ -31,17 +31,29 @@ pub struct Model {
 fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
     orders.after_next_render(Msg::Rendered);
     let mut sim = Simulation::new();
+    let mut node_logic = Box::new(InvokeProtocolForAllNodes(
+            // simple_flooding::SimpleFlooding::<u32>::default(),
+            // random_walks::RandomWalks::new(1024),
+            nakamoto_consensus::NakamotoConsensus::default(),
+        ));
+    let mut view_cache = ViewCache::default();
+
     sim.do_now(SpawnRandomNodes(32));
     sim.do_now(MakeDelaunayNetwork);
-    sim.do_now(PokeMultipleRandom(32));
+    sim.do_now(PokeMultipleRandomNodes(1));
+
+    // TODO clean this up once init logic is nicer
+    sim.catch_up(
+        &mut [&mut *node_logic],
+        &mut [&mut view_cache],
+        50.,
+    );
+
     Model {
         sim,
-        view_cache: ViewCache::default(),
+        view_cache,
         fps: FPSCounter::default(),
-        // node_logic: Box::new(InvokeProtocolForAllNodes(random_walks::RandomWalks::new(1024))),
-        node_logic: Box::new(InvokeProtocolForAllNodes(
-            simple_flooding::SimpleFlooding::<u32>::default(),
-        )),
+        node_logic,
     }
 }
 
@@ -75,13 +87,14 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             model.sim.time.toggle_paused();
         }
         Msg::NodeClick(node) => {
-            // model.sim.do_now(Poke(node));
-            model
-                .sim
-                .do_now(protocols::simple_flooding::StartSimpleFlooding(
-                    node,
-                    rand::random::<u32>(),
-                ));
+            log!(format!("Click on {}", model.sim.name(node)));
+            model.sim.do_now(PokeNode(node));
+            // model
+            //     .sim
+            //     .do_now(protocols::simple_flooding::StartSimpleFlooding(
+            //         node,
+            //         rand::random::<u32>(),
+            //     ));
         }
     }
 }

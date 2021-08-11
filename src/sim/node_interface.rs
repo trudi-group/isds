@@ -67,16 +67,16 @@ impl<P: Protocol> InvokeProtocolForAllNodes<P> {
                     .query_one_mut::<(&UnderlayMessage, &P::MessagePayload)>(message)
                     .unwrap(); // FIXME this will break if we use multiple protocols
                 let (underlay_message, payload) = (*underlay_message, payload.clone());
-                sim.log(format!(
-                    "{}: Got message from {}",
-                    sim.name(node),
-                    sim.name(underlay_message.source),
-                ));
+                // sim.log(format!(
+                //     "{}: Got message from {}",
+                //     sim.name(node),
+                //     sim.name(underlay_message.source),
+                // ));
                 self.0
                     .handle_message(NodeInterface::new(sim, node), underlay_message, payload)?;
             }
             NodeEvent::Poke => {
-                sim.log(format!("{}: Got poked!", sim.name(node)));
+                // sim.log(format!("{}: Got poked!", sim.name(node)));
                 self.0.handle_poke(NodeInterface::new(sim, node))?;
             }
             NodeEvent::TimerFired(_) => {

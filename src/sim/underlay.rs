@@ -123,11 +123,11 @@ impl Simulation {
             trajectory,
             payload,
         ));
-        self.log(format!(
-            "{}: Sending a message to {}",
-            self.name(source),
-            self.name(dest),
-        ));
+        // self.log(format!(
+        //     "{}: Sending a message to {}",
+        //     self.name(source),
+        //     self.name(dest),
+        // ));
         self.schedule_at(
             end_time,
             Event::Node(dest, NodeEvent::MessageArrived(message_entity)),

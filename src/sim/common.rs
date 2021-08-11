@@ -4,8 +4,8 @@ use std::cmp;
 use std::collections::BTreeSet;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Poke(pub Entity);
-impl Command for Poke {
+pub struct PokeNode(pub Entity);
+impl Command for PokeNode {
     fn execute(&self, sim: &mut Simulation) -> Result<(), Box<dyn Error>> {
         sim.schedule_now(Event::Node(self.0, NodeEvent::Poke));
         Ok(())
@@ -13,13 +13,25 @@ impl Command for Poke {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct PokeMultipleRandom(pub usize);
-impl Command for PokeMultipleRandom {
+pub struct PokeMultipleRandomNodes(pub usize);
+impl Command for PokeMultipleRandomNodes {
     fn execute(&self, sim: &mut Simulation) -> Result<(), Box<dyn Error>> {
+        // TODO it is confusing that some nodes are poked twice
         for _ in 0..self.0 {
             let node = sim
                 .pick_random_node()
                 .ok_or_else(|| "Not enough nodes?".to_string())?;
+            sim.schedule_now(Event::Node(node, NodeEvent::Poke));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PokeEachNode;
+impl Command for PokeEachNode {
+    fn execute(&self, sim: &mut Simulation) -> Result<(), Box<dyn Error>> {
+        for &node in sim.all_nodes().iter() {
             sim.schedule_now(Event::Node(node, NodeEvent::Poke));
         }
         Ok(())
