@@ -57,7 +57,7 @@ impl Simulation {
             rng: rand::thread_rng(),
             logger: Logger::new(),
             event_queue: EventQueue::new(),
-            underlay_config: UnderlayConfig::new(1000., 1000.),
+            underlay_config: UnderlayConfig::new(800., 800.),
         }
     }
     pub fn schedule_now(&mut self, event: Event) {

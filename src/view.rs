@@ -2,20 +2,34 @@ use super::*;
 use view_helpers::*;
 
 // `view` describes what to display.
-#[rustfmt::skip]
 pub fn view(model: &Model) -> impl IntoNodes<Msg> {
     let sim_time = model.sim.time.now();
+    let buffer_space = 50.;
     nodes![
         div![
-            button![if model.sim.time.paused() { "Play" } else { "Pause" }, ev(Ev::Click, |_| Msg::UserPausePlay)],
+            button![
+                if model.sim.time.paused() {
+                    "Play"
+                } else {
+                    "Pause"
+                },
+                ev(Ev::Click, |_| Msg::UserPausePlay)
+            ],
             format!("Sim time (s): {:.3}", sim_time),
             format!(" | FPS: {:.0}", model.fps.get()),
         ],
         svg![
+            attrs! {
+                At::ViewBox => format!("{} {} {} {}",
+                    -buffer_space,
+                    -buffer_space,
+                    model.sim.underlay_width() + 2. * buffer_space,
+                    model.sim.underlay_height() + 2. * buffer_space
+                ),
+            },
             style! {
                 St::BorderStyle => "solid",
-                St::Width => px(model.sim.underlay_width()),
-                St::Height => px(model.sim.underlay_height()),
+                St::MaxWidth => px(1024),
             },
             view_palette(&model.view_cache),
             view_edges(&model.view_cache),
@@ -33,8 +47,8 @@ fn view_palette(view_cache: &ViewCache) -> Vec<Node<Msg>> {
         .enumerate()
         .map(|(i, color)| {
             circle![attrs! {
-                At::Cx => 10. + (5 * i) as f32,
-                At::Cy => 10.,
+                At::Cx => -40. + (5 * i) as f32,
+                At::Cy => -40.,
                 At::R => 5.,
                 At::Fill => color,
             }]
