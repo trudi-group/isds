@@ -7,6 +7,9 @@ pub fn view(model: &Model) -> impl IntoNodes<Msg> {
     let buffer_space = 50.;
     nodes![
         div![
+            style! {
+                St::MaxWidth => px(1024),
+            },
             button![
                 if model.sim.time.paused() {
                     "▶️"
@@ -23,6 +26,16 @@ pub fn view(model: &Model) -> impl IntoNodes<Msg> {
                 model.sim.time.speed()
             ),
             format!(" | FPS: {:.0}", model.fps.get()),
+            span![
+                style! {
+                    St::Float => "right",
+                    St::MarginTop => px(5),
+                    St::MarginBottom => px(5),
+                    St::Cursor => "pointer",
+                },
+                "[?]",
+                ev(Ev::Click, move |_| Msg::UserToggleHelp),
+            ]
         ],
         svg![
             attrs! {
@@ -43,6 +56,7 @@ pub fn view(model: &Model) -> impl IntoNodes<Msg> {
             view_nodes(&model.sim.world, &model.view_cache),
         ],
         view_log(model.sim.logger.entries()),
+        view_help(model.show_help),
     ]
 }
 
@@ -138,6 +152,54 @@ fn view_log<'a>(
     pre![message_log
         .rev()
         .map(|(time, message)| { format!("{:.3}: {}\n", time, message) })]
+}
+
+fn view_help(show_help: bool) -> Node<Msg> {
+    // FIXME Markdown rendering
+    let help_message = md![r#"
+    *Work in progress!*
+
+    Nodes find new blocks when you click on them.
+
+    Some handy keyboard shortcuts:
+    ```
+    Space => pause/play simulation
+    Arrow Left/Right, h/l => control simulation speed
+    ```
+    "#];
+
+    div![
+        style![
+            St::Display => if show_help { "block" } else { "none" },
+            St::Position => "fixed",
+            St::ZIndex => 1,
+            St::PaddingTop => px(100),
+            St::Top =>  px(0),
+            St::Left =>  px(0),
+            St::Right =>  px(0),
+            St::Height => percent(100),
+            St::BackgroundColor => "rgba(0,0,0,0.5)",
+        ],
+        div![
+            style![
+                St::Padding => px(20),
+                St::Margin => "auto",
+                St::Width => percent(80),
+                St::BackgroundColor => "white",
+            ],
+            span![
+                style! {
+                    St::Float => "right",
+                    St::MarginTop => px(5),
+                    St::MarginBottom => px(5),
+                    St::Cursor => "pointer",
+                },
+                "[✕]",
+                ev(Ev::Click, move |_| Msg::UserToggleHelp),
+            ],
+            help_message,
+        ]
+    ]
 }
 
 fn view_blocks(

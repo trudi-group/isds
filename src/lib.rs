@@ -22,6 +22,7 @@ pub struct Model {
     pub fps: FPSCounter,
     pub node_logic: Box<dyn EventHandlerMut>,
     pub poker: Box<dyn EventHandlerMut>,
+    pub show_help: bool,
 }
 
 // ------ ------
@@ -62,6 +63,7 @@ fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
         fps: FPSCounter::default(),
         node_logic,
         poker,
+        show_help: false,
     }
 }
 
@@ -76,6 +78,7 @@ pub enum Msg {
     UserPausePlay,
     UserMakeFaster,
     UserMakeSlower,
+    UserToggleHelp,
     NodeClick(Entity),
     KeyDown(web_sys::KeyboardEvent),
 }
@@ -103,6 +106,9 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::UserMakeSlower => {
             model.sim.time.set_speed(model.sim.time.speed() / 10f64);
         }
+        Msg::UserToggleHelp => {
+            model.show_help = !model.show_help;
+        }
         Msg::NodeClick(node) => {
             log!(format!("Click on {}", model.sim.name(node)));
             model.sim.do_now(PokeNode(node));
@@ -120,7 +126,7 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             "ArrowLeft" | "h" => {
                 orders.send_msg(Msg::UserMakeSlower);
             }
-            "ArrowRight" | "l"  => {
+            "ArrowRight" | "l" => {
                 orders.send_msg(Msg::UserMakeFaster);
             }
             key => {
