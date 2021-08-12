@@ -162,10 +162,10 @@ fn view_help(show_help: bool) -> Node<Msg> {
     Nodes find new blocks when you click on them.
 
     Some handy keyboard shortcuts:
-    ```
-    Space => pause/play simulation
-    Arrow Left/Right, h/l => control simulation speed
-    ```
+
+    - `[space]` => pause/play simulation
+    - `[←]`/`[→]`, `[h]`/`[l]` => control simulation speed
+    - `[m]` => a random node will "mine" a block
     "#];
 
     div![
@@ -198,7 +198,8 @@ fn view_help(show_help: bool) -> Node<Msg> {
                 ev(Ev::Click, move |_| Msg::UserToggleHelp),
             ],
             help_message,
-        ]
+        ],
+        ev(Ev::Click, move |_| Msg::UserToggleHelp),
     ]
 }
 

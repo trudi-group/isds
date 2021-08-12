@@ -14,6 +14,18 @@ impl Command for PokeNode {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PokeRandomNode;
+impl Command for PokeRandomNode {
+    fn execute(&self, sim: &mut Simulation) -> Result<(), Box<dyn Error>> {
+        let node = sim
+            .pick_random_node()
+            .ok_or_else(|| "Not enough nodes?".to_string())?;
+        sim.schedule_now(Event::Node(node, NodeEvent::Poke));
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PokeMultipleRandomNodes(pub usize);
 impl Command for PokeMultipleRandomNodes {
     fn execute(&self, sim: &mut Simulation) -> Result<(), Box<dyn Error>> {
