@@ -31,6 +31,10 @@ pub struct Model {
 // `init` describes what should happen when your app started.
 fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
     orders.after_next_render(Msg::Rendered);
+    orders.stream(streams::window_event(Ev::KeyPress, |event| {
+        Msg::KeyPress(event.unchecked_into())
+    }));
+
     let mut sim = Simulation::new();
     let mut node_logic = Box::new(InvokeProtocolForAllNodes(
         // simple_flooding::SimpleFlooding::<u32>::default(),
@@ -65,12 +69,13 @@ fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
 //    Update
 // ------ ------
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 // `Msg` describes the different events you can modify state with.
 pub enum Msg {
     Rendered(RenderInfo),
     UserPausePlay,
     NodeClick(Entity),
+    KeyPress(web_sys::KeyboardEvent),
 }
 
 // `update` describes how to handle each `Msg`.
@@ -99,6 +104,11 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             //         node,
             //         rand::random::<u32>(),
             //     ));
+        }
+        Msg::KeyPress(keyboard_event) => {
+            if keyboard_event.key() == " " {
+                orders.send_msg(Msg::UserPausePlay);
+            }
         }
     }
 }
