@@ -9,13 +9,19 @@ pub fn view(model: &Model) -> impl IntoNodes<Msg> {
         div![
             button![
                 if model.sim.time.paused() {
-                    "Play"
+                    "▶️"
                 } else {
-                    "Pause"
+                    "⏸️"
                 },
-                ev(Ev::Click, |_| Msg::UserPausePlay)
+                ev(Ev::Click, |_| Msg::UserPausePlay),
             ],
-            format!("Sim time (s): {:.3}", sim_time),
+            button!["⏪", ev(Ev::Click, |_| Msg::UserMakeSlower),],
+            button!["⏩", ev(Ev::Click, |_| Msg::UserMakeFaster),],
+            format!(
+                " | Sim time (s): {:.3} ({}✕)",
+                sim_time,
+                model.sim.time.speed()
+            ),
             format!(" | FPS: {:.0}", model.fps.get()),
         ],
         svg![

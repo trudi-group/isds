@@ -31,8 +31,8 @@ pub struct Model {
 // `init` describes what should happen when your app started.
 fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
     orders.after_next_render(Msg::Rendered);
-    orders.stream(streams::window_event(Ev::KeyPress, |event| {
-        Msg::KeyPress(event.unchecked_into())
+    orders.stream(streams::window_event(Ev::KeyDown, |event| {
+        Msg::KeyDown(event.unchecked_into())
     }));
 
     let mut sim = Simulation::new();
@@ -74,8 +74,10 @@ fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
 pub enum Msg {
     Rendered(RenderInfo),
     UserPausePlay,
+    UserMakeFaster,
+    UserMakeSlower,
     NodeClick(Entity),
-    KeyPress(web_sys::KeyboardEvent),
+    KeyDown(web_sys::KeyboardEvent),
 }
 
 // `update` describes how to handle each `Msg`.
@@ -95,6 +97,12 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::UserPausePlay => {
             model.sim.time.toggle_paused();
         }
+        Msg::UserMakeFaster => {
+            model.sim.time.set_speed(model.sim.time.speed() * 10f64);
+        }
+        Msg::UserMakeSlower => {
+            model.sim.time.set_speed(model.sim.time.speed() / 10f64);
+        }
         Msg::NodeClick(node) => {
             log!(format!("Click on {}", model.sim.name(node)));
             model.sim.do_now(PokeNode(node));
@@ -105,11 +113,20 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             //         rand::random::<u32>(),
             //     ));
         }
-        Msg::KeyPress(keyboard_event) => {
-            if keyboard_event.key() == " " {
+        Msg::KeyDown(keyboard_event) => match keyboard_event.key().as_str() {
+            " " => {
                 orders.send_msg(Msg::UserPausePlay);
             }
-        }
+            "ArrowLeft" | "h" => {
+                orders.send_msg(Msg::UserMakeSlower);
+            }
+            "ArrowRight" | "l"  => {
+                orders.send_msg(Msg::UserMakeFaster);
+            }
+            key => {
+                log!("Unmapped key pressed: {:?}", key);
+            }
+        },
     }
 }
 

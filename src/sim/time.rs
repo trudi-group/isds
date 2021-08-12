@@ -19,6 +19,9 @@ impl Time {
     pub const fn now(&self) -> SimSeconds {
         self.sim_time
     }
+    pub const fn speed(&self) -> f64 {
+        self.speed_factor
+    }
     pub fn paused(&self) -> bool {
         self.paused
     }
@@ -33,6 +36,9 @@ impl Time {
     pub fn advance_sim_time_to(&mut self, new_now: SimSeconds) {
         debug_assert!(new_now >= self.sim_time);
         self.sim_time = new_now;
+    }
+    pub fn set_speed(&mut self, speed: f64) {
+        self.speed_factor = speed;
     }
     pub fn toggle_paused(&mut self) {
         self.paused = !self.paused;
