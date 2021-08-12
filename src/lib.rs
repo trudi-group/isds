@@ -132,6 +132,9 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             "m" => {
                 model.sim.do_now(PokeRandomNode);
             }
+            "?" => {
+                orders.send_msg(Msg::UserToggleHelp);
+            }
             key => {
                 log!("Unmapped key pressed: {:?}", key);
             }

@@ -166,6 +166,7 @@ fn view_help(show_help: bool) -> Node<Msg> {
     - `[space]` => pause/play simulation
     - `[←]`/`[→]`, `[h]`/`[l]` => control simulation speed
     - `[m]` => a random node will "mine" a block
+    - `[?]` => show this page
     "#];
 
     div![
