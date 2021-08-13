@@ -114,28 +114,29 @@ fn view_edges(view_cache: &ViewCache) -> Vec<Node<Msg>> {
                         At::StrokeWidth => 8,
                     }
                 ],
-                line_![
+                IF!(edge_type != EdgeType::Phantom => line_![
+                    attrs! {
+                        At::X1 => line.start.x,
+                        At::Y1 => line.start.y,
+                        At::X2 => line.end.x,
+                        At::Y2 => line.end.y,
+                    },
                     if edge_type == EdgeType::Undirected {
                         attrs! {
-                            At::X1 => line.start.x,
-                            At::Y1 => line.start.y,
-                            At::X2 => line.end.x,
-                            At::Y2 => line.end.y,
                             At::Stroke => "gray",
                         }
                     } else {
                         // TODO: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/marker
                         attrs! {
-                            At::X1 => line.start.x,
-                            At::Y1 => line.start.y,
-                            At::X2 => line.end.x,
-                            At::Y2 => line.end.y,
                             At::Stroke => "lightgray",
                             At::StrokeDashArray => "8,8",
                         }
                     },
-                ],
-                ev(Ev::Click, move |_| Msg::LinkClick(edge_endpoints.left, edge_endpoints.right)),
+                ]),
+                ev(Ev::Click, move |_| Msg::LinkClick(
+                    edge_endpoints.left(),
+                    edge_endpoints.right()
+                )),
             ]
         })
         .collect()

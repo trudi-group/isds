@@ -121,9 +121,23 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             //     ));
         }
         Msg::LinkClick(node1, node2) => {
-            log!(format!("Click on linke between {} and {}.", model.sim.name(node1), model.sim.name(node2)));
-            model.sim.do_now(RemovePeer(node1, node2));
-            model.sim.do_now(RemovePeer(node2, node1));
+            log!(format!(
+                "Click on link between {} and {}.",
+                model.sim.name(node1),
+                model.sim.name(node2)
+            ));
+            if model
+                .view_cache
+                .edge_type(node1, node2)
+                .unwrap()
+                .is_phantom()
+            {
+                model.sim.do_now(AddPeer(node1, node2));
+                model.sim.do_now(AddPeer(node2, node1));
+            } else {
+                model.sim.do_now(RemovePeer(node1, node2));
+                model.sim.do_now(RemovePeer(node2, node1));
+            }
         }
         Msg::KeyDown(keyboard_event) => match keyboard_event.key().as_str() {
             " " => {

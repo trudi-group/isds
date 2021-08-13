@@ -54,6 +54,11 @@ impl ViewCache {
     pub fn edges(&self) -> &EdgeMap {
         &self.edges
     }
+    pub fn edge_type(&self, endpoint1: Entity, endpoint2: Entity) -> Option<EdgeType> {
+        self.edges
+            .get(&EdgeEndpoints::new(endpoint1, endpoint2))
+            .map(|e| e.0)
+    }
     pub fn color(&self, number: u32) -> &str {
         self.colors.get(number)
     }
@@ -62,7 +67,10 @@ impl ViewCache {
     }
     fn rebuild_edges(&mut self, world: &World) {
         let edges = &mut self.edges;
-        edges.clear();
+
+        for (edge_type, _) in edges.values_mut() {
+            *edge_type = EdgeType::Phantom;
+        }
 
         log!("Rebuilding edges...");
 
@@ -70,7 +78,18 @@ impl ViewCache {
             for &peer in peer_set.0.iter() {
                 let endpoints = EdgeEndpoints::new(node, peer);
                 match edges.entry(endpoints) {
-                    Entry::Occupied(mut e) => e.get_mut().0 = EdgeType::Undirected,
+                    Entry::Occupied(mut e) => {
+                        let e = e.get_mut();
+                        if e.0 == EdgeType::Phantom {
+                            e.0 = if endpoints.left == node {
+                                EdgeType::LeftRight
+                            } else {
+                                EdgeType::RightLeft
+                            };
+                        } else {
+                            e.0 = EdgeType::Undirected;
+                        }
+                    }
                     Entry::Vacant(e) => {
                         let _type = if endpoints.left == node {
                             EdgeType::LeftRight
@@ -99,14 +118,8 @@ pub type EdgeMap = BTreeMap<EdgeEndpoints, (EdgeType, UnderlayLine)>;
 
 #[derive(Debug, Copy, Clone, Ord, Eq, PartialOrd, PartialEq)]
 pub struct EdgeEndpoints {
-    pub left: Entity,
-    pub right: Entity,
-}
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum EdgeType {
-    Undirected,
-    LeftRight,
-    RightLeft,
+    left: Entity,
+    right: Entity,
 }
 impl EdgeEndpoints {
     pub fn new(node1: Entity, node2: Entity) -> Self {
@@ -116,6 +129,25 @@ impl EdgeEndpoints {
             (node2, node1)
         };
         Self { left, right }
+    }
+    pub fn left(&self) -> Entity {
+        self.left
+    }
+    pub fn right(&self) -> Entity {
+        self.right
+    }
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum EdgeType {
+    Undirected,
+    LeftRight,
+    RightLeft,
+    Phantom,
+}
+impl EdgeType {
+    pub fn is_phantom(&self) -> bool {
+        *self == Self::Phantom
     }
 }
 
@@ -187,7 +219,7 @@ mod tests {
     }
 
     #[wasm_bindgen_test]
-    fn update_connection_lines_set_direction() {
+    fn rebuild_edges_sets_direction() {
         let mut world = World::default();
         let mut view_cache = ViewCache::default();
         let node1 = world.spawn((PeerSet::default(), UnderlayPosition::new(23., 42.)));
@@ -205,6 +237,36 @@ mod tests {
                 .get(&EdgeEndpoints::new(node1, node2))
                 .unwrap()
                 .0
+        );
+    }
+
+    #[wasm_bindgen_test]
+    fn rebuild_edges_stores_removed_edges_as_phantom_edges() {
+        let mut world = World::default();
+        let mut view_cache = ViewCache::default();
+        let node1 = world.spawn((PeerSet::default(), UnderlayPosition::new(23., 42.)));
+        let node2 = world.spawn((
+            PeerSet(vec![node1].into_iter().collect()),
+            UnderlayPosition::new(13., 13.),
+        ));
+
+        view_cache.rebuild_edges(&world);
+
+        world
+            .query_one_mut::<&mut PeerSet>(node2)
+            .unwrap()
+            .0
+            .remove(&node1);
+
+        view_cache.rebuild_edges(&world);
+
+        assert_eq!(
+            EdgeType::Phantom,
+            view_cache
+                .edges
+                .get(&EdgeEndpoints::new(node1, node2))
+                .unwrap()
+                .0,
         );
     }
 
