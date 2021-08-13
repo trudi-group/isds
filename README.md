@@ -1,6 +1,6 @@
 # Interactive Simulation of Distributed Systems; Prototype for Bitcoin Consensus
 
-*isds* - pronounced like *eye-see/dee-see*, similarly to the name of that Australian rock band...
+Demo: https://trudi.weizenbaum-institut.de/isds_prototype/
 
 ## Getting started
 
