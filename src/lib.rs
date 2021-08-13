@@ -51,11 +51,11 @@ fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
 
     // TODO clean this up once init logic is nicer
     // TODO improve event handler "registration" ergonomics...
-    sim.catch_up(
-        &mut [&mut *node_logic, &mut *poker],
-        &mut [&mut view_cache],
-        100.,
-    );
+    // sim.catch_up(
+    //     &mut [&mut *node_logic, &mut *poker],
+    //     &mut [&mut view_cache],
+    //     100.,
+    // );
 
     Model {
         sim,
@@ -63,7 +63,7 @@ fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
         fps: FPSCounter::default(),
         node_logic,
         poker,
-        show_help: false,
+        show_help: true,
     }
 }
 
@@ -154,6 +154,9 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             }
             "?" => {
                 orders.send_msg(Msg::UserToggleHelp);
+            }
+            "Escape" => {
+                model.show_help = false;
             }
             key => {
                 log!("Unmapped key pressed: {:?}", key);

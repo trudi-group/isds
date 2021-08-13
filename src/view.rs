@@ -1,4 +1,5 @@
 use super::*;
+use indoc::indoc;
 use view_helpers::*;
 
 // `view` describes what to display.
@@ -173,18 +174,34 @@ fn view_log<'a>(
 
 fn view_help(show_help: bool) -> Node<Msg> {
     // FIXME Markdown rendering
-    let help_message = md![r#"
-    *Work in progress!*
+    let help_message = md!(indoc! {r#"
+        # Interactive Simulation of Nakamoto Consensus
 
-    Nodes find new blocks when you click on them.
+        Shows how ₿itcoin works. Roughly.
 
-    Some handy keyboard shortcuts:
+        *Work in progress!*
 
-    - `[space]` => pause/play simulation
-    - `[←]`/`[→]`, `[h]`/`[l]` => control simulation speed
-    - `[m]` => a random node will "mine" a block
-    - `[?]` => show this page
-    "#];
+        ## Getting started
+
+        Nodes find new blocks when you click on them.
+
+        Links between nodes disappear and reappear when you click on them.
+
+        ## Some handy keyboard shortcuts
+
+        - `[space]` ⇨ pause/play simulation
+        - `[←]`/`[→]`, `[h]`/`[l]` ⇨ control simulation speed
+        - `[m]` ⇨ a random node will "mine" a block
+        - `[?]` ⇨ show this page
+
+        ## Where is the code?
+
+        [Here](https://gitlab.informatik.hu-berlin.de/wfg17/isds-bitcoin-prototype), for now.
+
+        ## Feedback is very welcome!
+
+        -- [Martin](https://www.weizenbaum-institut.de/en/portrait/p/martin-florian/)
+    "#});
 
     div![
         style![
@@ -216,6 +233,9 @@ fn view_help(show_help: bool) -> Node<Msg> {
                 ev(Ev::Click, move |_| Msg::UserToggleHelp),
             ],
             help_message,
+            ev(Ev::Click, |event| {
+                event.stop_propagation();
+            })
         ],
         ev(Ev::Click, move |_| Msg::UserToggleHelp),
     ]
