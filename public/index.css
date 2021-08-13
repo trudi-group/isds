@@ -1,0 +1,6 @@
+.phantom-link {
+  opacity: 0.0;
+}
+.phantom-link:hover {
+  opacity: 1.0;
+}

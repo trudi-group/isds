@@ -23,7 +23,7 @@ impl FPSCounter {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ViewCache {
     colors: PseudorandomColors,
     edges: EdgeMap,
@@ -99,8 +99,8 @@ pub type EdgeMap = BTreeMap<EdgeEndpoints, (EdgeType, UnderlayLine)>;
 
 #[derive(Debug, Copy, Clone, Ord, Eq, PartialOrd, PartialEq)]
 pub struct EdgeEndpoints {
-    left: Entity,
-    right: Entity,
+    pub left: Entity,
+    pub right: Entity,
 }
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum EdgeType {
@@ -119,7 +119,7 @@ impl EdgeEndpoints {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PseudorandomColors {
     full_palette: Vec<String>,
 }

@@ -92,6 +92,24 @@ impl EventHandlerMut for ContinuousAutomaticNodePoker {
 }
 struct PokeTimer;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AddPeer(pub Entity, pub Entity);
+impl Command for AddPeer {
+    fn execute(&self, sim: &mut Simulation) -> Result<(), Box<dyn Error>> {
+        add_peer(sim, self.0, self.1);
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RemovePeer(pub Entity, pub Entity);
+impl Command for RemovePeer {
+    fn execute(&self, sim: &mut Simulation) -> Result<(), Box<dyn Error>> {
+        remove_peer(sim, self.0, self.1);
+        Ok(())
+    }
+}
+
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct MakeDelaunayNetwork;
 impl Command for MakeDelaunayNetwork {
@@ -167,6 +185,10 @@ pub fn add_random_nodes_as_peers(
 
 pub fn add_peer(sim: &mut Simulation, node: Entity, peer: Entity) {
     peers(sim, node).0.insert(peer);
+}
+
+pub fn remove_peer(sim: &mut Simulation, node: Entity, peer: Entity) {
+    peers(sim, node).0.remove(&peer);
 }
 
 pub fn peers(sim: &mut Simulation, node: Entity) -> hecs::RefMut<PeerSet> {

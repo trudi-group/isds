@@ -80,6 +80,7 @@ pub enum Msg {
     UserMakeSlower,
     UserToggleHelp,
     NodeClick(Entity),
+    LinkClick(Entity, Entity),
     KeyDown(web_sys::KeyboardEvent),
 }
 
@@ -118,6 +119,11 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             //         node,
             //         rand::random::<u32>(),
             //     ));
+        }
+        Msg::LinkClick(node1, node2) => {
+            log!(format!("Click on linke between {} and {}.", model.sim.name(node1), model.sim.name(node2)));
+            model.sim.do_now(RemovePeer(node1, node2));
+            model.sim.do_now(RemovePeer(node2, node1));
         }
         Msg::KeyDown(keyboard_event) => match keyboard_event.key().as_str() {
             " " => {

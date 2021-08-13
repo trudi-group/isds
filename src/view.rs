@@ -23,7 +23,7 @@ pub fn view(model: &Model) -> impl IntoNodes<Msg> {
             format!(
                 " | Sim time (s): {:.3} ({}✕)",
                 sim_time,
-                model.sim.time.speed()
+                model.sim.time.speed() as f32 // downcasting makes it look nicer when printed
             ),
             format!(" | FPS: {:.0}", model.fps.get()),
             span![
@@ -100,27 +100,43 @@ fn view_nodes(world: &World, view_cache: &ViewCache) -> Vec<Node<Msg>> {
 fn view_edges(view_cache: &ViewCache) -> Vec<Node<Msg>> {
     view_cache
         .edges()
-        .values()
-        .map(|(edge_type, line)| {
-            line_![if *edge_type == EdgeType::Undirected {
-                attrs! {
-                    At::X1 => line.start.x,
-                    At::Y1 => line.start.y,
-                    At::X2 => line.end.x,
-                    At::Y2 => line.end.y,
-                    At::Stroke => "gray",
-                }
-            } else {
-                // TODO: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/marker
-                attrs! {
-                    At::X1 => line.start.x,
-                    At::Y1 => line.start.y,
-                    At::X2 => line.end.x,
-                    At::Y2 => line.end.y,
-                    At::Stroke => "lightgray",
-                    At::StrokeDashArray => "8,8",
-                }
-            }]
+        .iter()
+        .map(|(&edge_endpoints, &(edge_type, line))| {
+            g![
+                line_![
+                    C!["phantom-link"],
+                    attrs! {
+                        At::X1 => line.start.x,
+                        At::Y1 => line.start.y,
+                        At::X2 => line.end.x,
+                        At::Y2 => line.end.y,
+                        At::Stroke => "yellow",
+                        At::StrokeWidth => 8,
+                    }
+                ],
+                line_![
+                    if edge_type == EdgeType::Undirected {
+                        attrs! {
+                            At::X1 => line.start.x,
+                            At::Y1 => line.start.y,
+                            At::X2 => line.end.x,
+                            At::Y2 => line.end.y,
+                            At::Stroke => "gray",
+                        }
+                    } else {
+                        // TODO: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/marker
+                        attrs! {
+                            At::X1 => line.start.x,
+                            At::Y1 => line.start.y,
+                            At::X2 => line.end.x,
+                            At::Y2 => line.end.y,
+                            At::Stroke => "lightgray",
+                            At::StrokeDashArray => "8,8",
+                        }
+                    },
+                ],
+                ev(Ev::Click, move |_| Msg::LinkClick(edge_endpoints.left, edge_endpoints.right)),
+            ]
         })
         .collect()
 }
