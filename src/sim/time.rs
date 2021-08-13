@@ -53,6 +53,9 @@ impl TimeSpan {
     pub fn progress(&self, time_now: SimSeconds) -> f64 {
         ((time_now - self.start) / (self.end - self.start)).into_inner()
     }
+    pub fn progress_clamped(&self, time_now: SimSeconds) -> f64 {
+        self.progress(time_now).clamp(0.0, 1.0)
+    }
 }
 
 #[cfg(test)]

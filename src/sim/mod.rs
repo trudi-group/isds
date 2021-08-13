@@ -38,6 +38,7 @@ pub enum Event {
 pub enum NodeEvent {
     MessageArrived(Entity),
     TimerFired(Entity),
+    PeerSetChanged(PeerSetUpdate),
     Poke,
 }
 
@@ -146,6 +147,7 @@ mod tests {
     wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
 
     #[wasm_bindgen_test]
+    // FIXME this test should actually be failing right now...
     fn schedule_immediate_maintains_schedule_order() {
         let mut sim = Simulation::new();
 
@@ -156,6 +158,31 @@ mod tests {
         sim.schedule_now(event1);
         sim.schedule_now(event2);
         sim.schedule_now(event3);
+
+        assert_eq!(event1, sim.event_queue.pop().unwrap().event);
+        assert_eq!(event2, sim.event_queue.pop().unwrap().event);
+        assert_eq!(event3, sim.event_queue.pop().unwrap().event);
+    }
+
+    #[wasm_bindgen_test]
+    // FIXME this test should actually be failing right now...
+    fn schedule_at_same_time_maintains_schedule_order() {
+        let mut sim = Simulation::new();
+
+        let node = sim.spawn_random_node();
+
+        let event1 = Event::Node(node, NodeEvent::Poke);
+        let event2 = Event::Node(
+            node,
+            NodeEvent::MessageArrived(sim.world.spawn(("fake message", 73))),
+        );
+        let event3 = Event::Generic(sim.world.spawn((42,)));
+
+        let target_time = OrderedFloat(120.);
+        sim.schedule_at(target_time, event1);
+        sim.schedule_at(target_time, event2);
+        sim.schedule_at(target_time, event3);
+
         assert_eq!(event1, sim.event_queue.pop().unwrap().event);
         assert_eq!(event2, sim.event_queue.pop().unwrap().event);
         assert_eq!(event3, sim.event_queue.pop().unwrap().event);

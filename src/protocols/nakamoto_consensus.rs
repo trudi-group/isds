@@ -35,7 +35,24 @@ impl Protocol for NakamotoConsensus {
         let tip_hash = node.get::<NakamotoNodeState>().tip;
         let block = Block::new(tip_hash, &mut node.rng());
         node.get::<NakamotoNodeState>().register_block(block);
-        simple_flooding::flood(&mut node, block);
+        SimpleFlooding::flood(&mut node, block);
+        Ok(())
+    }
+
+    fn handle_peer_set_update(
+        &self,
+        mut node: NodeInterface,
+        update: PeerSetUpdate,
+    ) -> Result<(), Box<dyn Error>> {
+        match update {
+            PeerSetUpdate::PeerAdded(peer) => {
+                let all_blocks_sorted = node.get::<NakamotoNodeState>().all_blocks_sorted();
+                SimpleFlooding::flood_peer_with(&mut node, peer, all_blocks_sorted)
+            }
+            PeerSetUpdate::PeerRemoved(peer) => {
+                SimpleFlooding::<Block>::forget_peer(&mut node, peer)
+            }
+        };
         Ok(())
     }
 }
@@ -116,6 +133,13 @@ impl NakamotoNodeState {
     }
     pub fn hash_prev(&self, block_hash: Hash) -> Option<Hash> {
         self.all_blocks.get(&block_hash).map(|b| b.1.hash_prev)
+    }
+    /// Returns all stored blocks (forks included) sorted by their block height, smallest heights
+    /// first.
+    pub fn all_blocks_sorted(&self) -> Vec<Block> {
+        let mut blocks_heights: Vec<(usize, Block)> = self.all_blocks.values().cloned().collect();
+        blocks_heights.sort_by(|a, b| a.0.cmp(&b.0));
+        blocks_heights.into_iter().map(|(_, block)| block).collect()
     }
 }
 
@@ -282,5 +306,43 @@ mod tests {
             }
         }
         assert!(remaining_blocks.is_empty());
+    }
+
+    #[wasm_bindgen_test]
+    fn nakamoto_consensus_recovers_from_splits() {
+        let mut sim = Simulation::new();
+        let mut node_logic = Box::new(InvokeProtocolForAllNodes(NakamotoConsensus::default()));
+
+        let node1 = sim.spawn_random_node();
+        let node2 = sim.spawn_random_node();
+
+        sim.do_now(PokeNode(node1));
+        sim.do_now(PokeNode(node1));
+        sim.do_now(PokeNode(node1));
+
+        sim.do_now(PokeNode(node2));
+        sim.do_now(PokeNode(node2));
+
+        sim.catch_up(&mut [&mut *node_logic], &mut [], 10.);
+
+        add_peer(&mut sim, node1, node2);
+        add_peer(&mut sim, node2, node1);
+
+        sim.catch_up(&mut [&mut *node_logic], &mut [], 10.);
+
+        let state1 = sim
+            .world
+            .query_one_mut::<&NakamotoNodeState>(node1)
+            .expect("No relevant node state stored?")
+            .clone();
+
+        let state2 = sim
+            .world
+            .query_one_mut::<&NakamotoNodeState>(node2)
+            .expect("No relevant node state stored?")
+            .clone();
+
+        assert_eq!(state1.height(state1.tip), state2.height(state2.tip));
+        assert_eq!(state1.tip, state2.tip);
     }
 }

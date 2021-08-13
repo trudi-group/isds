@@ -20,9 +20,17 @@ impl<'a> NodeInterface<'a> {
         self.sim
             .log(format!("{}: {}", self.sim.name(self.node), message));
     }
-    pub fn send_message<P: hecs::Component>(&mut self, dest: Entity, payload: P) -> Entity {
+    pub fn send_message<P: Payload>(&mut self, dest: Entity, payload: P) -> Entity {
         let source = self.node;
         self.sim.send_message(source, dest, payload)
+    }
+    pub fn send_messages<P: Payload>(
+        &mut self,
+        dest: Entity,
+        payloads: impl IntoIterator<Item = P>,
+    ) -> Vec<Entity> {
+        let source = self.node;
+        self.sim.send_messages(source, dest, payloads)
     }
     pub fn rng(&mut self) -> &mut impl Rng {
         &mut self.sim.rng
@@ -50,6 +58,16 @@ pub trait Protocol {
     ) -> Result<(), Box<dyn Error>>;
 
     fn handle_poke(&self, node: NodeInterface) -> Result<(), Box<dyn Error>>;
+
+    /// Optional because not every protocol needs peers or wants to use the default peer set
+    /// abstraction.
+    fn handle_peer_set_update(
+        &self,
+        _node: NodeInterface,
+        _update: PeerSetUpdate,
+    ) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
 }
 
 pub struct InvokeProtocolForAllNodes<P: Protocol>(pub P);
@@ -73,14 +91,18 @@ impl<P: Protocol> InvokeProtocolForAllNodes<P> {
                 //     sim.name(underlay_message.source),
                 // ));
                 self.0
-                    .handle_message(NodeInterface::new(sim, node), underlay_message, payload)?;
-            }
-            NodeEvent::Poke => {
-                // sim.log(format!("{}: Got poked!", sim.name(node)));
-                self.0.handle_poke(NodeInterface::new(sim, node))?;
+                    .handle_message(sim.node_interface(node), underlay_message, payload)?;
             }
             NodeEvent::TimerFired(_) => {
                 todo!();
+            }
+            NodeEvent::PeerSetChanged(update) => {
+                self.0
+                    .handle_peer_set_update(sim.node_interface(node), update)?;
+            }
+            NodeEvent::Poke => {
+                // sim.log(format!("{}: Got poked!", sim.name(node)));
+                self.0.handle_poke(sim.node_interface(node))?;
             }
         }
         Ok(())

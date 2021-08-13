@@ -319,7 +319,7 @@ fn message_position(
     time_span: &TimeSpan,
     time_now: SimSeconds,
 ) -> (f32, f32) {
-    let progress = time_span.progress(time_now) as f32;
+    let progress = time_span.progress_clamped(time_now) as f32;
     // clippy said that `mul_add` could be faster...
     let x = (trajectory.end.x - trajectory.start.x).mul_add(progress, trajectory.start.x);
     let y = (trajectory.end.y - trajectory.start.y).mul_add(progress, trajectory.start.y);

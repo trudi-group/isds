@@ -102,18 +102,47 @@ impl Simulation {
             .filter(|id| *id != node)
             .collect()
     }
-    pub fn send_message<P: hecs::Component>(
+    pub fn send_message<P: Payload>(&mut self, source: Entity, dest: Entity, payload: P) -> Entity {
+        let start_time = self.time.now();
+        let (arrival_time, message_entity) =
+            self.spawn_message_entity(source, dest, start_time, payload);
+        self.schedule_at(
+            arrival_time,
+            Event::Node(dest, NodeEvent::MessageArrived(message_entity)),
+        );
+        message_entity
+    }
+    pub fn send_messages<P: Payload>(
         &mut self,
         source: Entity,
         dest: Entity,
+        payloads: impl IntoIterator<Item = P>,
+    ) -> Vec<Entity> {
+        let per_message_delay = SimSeconds::from(0.001);
+        let mut start_time = self.time.now();
+        let mut message_entities = vec![];
+        for payload in payloads.into_iter() {
+            let (arrival_time, message_entity) =
+                self.spawn_message_entity(source, dest, start_time, payload);
+            self.schedule_at(
+                arrival_time,
+                Event::Node(dest, NodeEvent::MessageArrived(message_entity)),
+            );
+            message_entities.push(message_entity);
+            start_time += per_message_delay;
+        }
+        message_entities
+    }
+    fn spawn_message_entity<P: Payload>(
+        &mut self,
+        source: Entity,
+        dest: Entity,
+        start_time: SimSeconds,
         payload: P,
-    ) -> Entity {
+    ) -> (OrderedFloat<f64>, Entity) {
         let trajectory = UnderlayLine::from_nodes(&self.world, source, dest);
         let flight_duration = f64::from(trajectory.length()) / self.underlay_config.message_speed;
-
-        let start_time = self.time.now();
         let end_time = start_time + flight_duration;
-
         let message_entity = self.world.spawn((
             UnderlayMessage { source, dest },
             TimeSpan {
@@ -123,16 +152,7 @@ impl Simulation {
             trajectory,
             payload,
         ));
-        // self.log(format!(
-        //     "{}: Sending a message to {}",
-        //     self.name(source),
-        //     self.name(dest),
-        // ));
-        self.schedule_at(
-            end_time,
-            Event::Node(dest, NodeEvent::MessageArrived(message_entity)),
-        );
-        message_entity
+        (end_time, message_entity)
     }
 }
 

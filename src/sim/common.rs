@@ -92,6 +92,12 @@ impl EventHandlerMut for ContinuousAutomaticNodePoker {
 }
 struct PokeTimer;
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum PeerSetUpdate {
+    PeerAdded(Entity),
+    PeerRemoved(Entity),
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AddPeer(pub Entity, pub Entity);
 impl Command for AddPeer {
@@ -185,10 +191,18 @@ pub fn add_random_nodes_as_peers(
 
 pub fn add_peer(sim: &mut Simulation, node: Entity, peer: Entity) {
     peers(sim, node).0.insert(peer);
+    sim.schedule_now(Event::Node(
+        node,
+        NodeEvent::PeerSetChanged(PeerSetUpdate::PeerAdded(peer)),
+    ));
 }
 
 pub fn remove_peer(sim: &mut Simulation, node: Entity, peer: Entity) {
     peers(sim, node).0.remove(&peer);
+    sim.schedule_now(Event::Node(
+        node,
+        NodeEvent::PeerSetChanged(PeerSetUpdate::PeerRemoved(peer)),
+    ));
 }
 
 pub fn peers(sim: &mut Simulation, node: Entity) -> hecs::RefMut<PeerSet> {
