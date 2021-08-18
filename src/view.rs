@@ -207,7 +207,8 @@ fn view_help(show_help: bool) -> Node<Msg> {
             St::Display => if show_help { "block" } else { "none" },
             St::Position => "fixed",
             St::ZIndex => 1,
-            St::PaddingTop => px(100),
+            St::Padding => px(5),
+            St::PaddingTop => px(80),
             St::Top =>  px(0),
             St::Left =>  px(0),
             St::Right =>  px(0),
@@ -218,7 +219,9 @@ fn view_help(show_help: bool) -> Node<Msg> {
             style![
                 St::Padding => px(20),
                 St::Margin => "auto",
-                St::Width => percent(80),
+                St::MaxWidth => px(900),
+                St::MaxHeight => "calc(100vh - 165px)",
+                St::OverflowY => "auto",
                 St::BackgroundColor => "white",
             ],
             span![
