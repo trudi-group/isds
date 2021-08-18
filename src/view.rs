@@ -26,7 +26,7 @@ pub fn view(model: &Model) -> impl IntoNodes<Msg> {
                 sim_time,
                 model.sim.time.speed() as f32 // downcasting makes it look nicer when printed
             ),
-            format!(" | FPS: {:.0}", model.fps.get()),
+            IF!(model.show_debug_infos => format!(" | FPS: {:.0}", model.fps.get())),
             span![
                 style! {
                     St::Float => "right",
@@ -51,12 +51,12 @@ pub fn view(model: &Model) -> impl IntoNodes<Msg> {
                 St::BorderStyle => "solid",
                 St::MaxWidth => px(1024),
             },
-            view_palette(&model.view_cache),
+            IF!(model.show_debug_infos => view_palette(&model.view_cache)),
             view_edges(&model.view_cache),
             view_messages(&model.sim.world, &model.view_cache, sim_time),
             view_nodes(&model.sim.world, &model.view_cache),
         ],
-        view_log(model.sim.logger.entries()),
+        IF!(model.show_debug_infos => view_log(model.sim.logger.entries())),
         view_help(model.show_help),
     ]
 }
@@ -173,7 +173,6 @@ fn view_log<'a>(
 }
 
 fn view_help(show_help: bool) -> Node<Msg> {
-    // FIXME Markdown rendering
     let help_message = md!(indoc! {r#"
         # Interactive Simulation of Nakamoto Consensus
 

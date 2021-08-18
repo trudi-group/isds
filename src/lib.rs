@@ -23,6 +23,7 @@ pub struct Model {
     pub node_logic: Box<dyn EventHandlerMut>,
     pub poker: Box<dyn EventHandlerMut>,
     pub show_help: bool,
+    pub show_debug_infos: bool,
 }
 
 // ------ ------
@@ -64,6 +65,7 @@ fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
         node_logic,
         poker,
         show_help: true,
+        show_debug_infos: false,
     }
 }
 
@@ -154,6 +156,9 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             }
             "?" => {
                 orders.send_msg(Msg::UserToggleHelp);
+            }
+            "d" => {
+                model.show_debug_infos = !model.show_debug_infos;
             }
             "Escape" => {
                 model.show_help = false;
