@@ -7,7 +7,7 @@ pub trait Command: DynClone + Sync + Send {
 
 impl Simulation {
     pub fn do_now(&mut self, command: impl Command + 'static) {
-        self.do_at(self.time.now() + f64::EPSILON, command)
+        self.do_at(self.time.now(), command)
     }
     pub fn do_in(&mut self, duration: SimSeconds, command: impl Command + 'static) {
         self.do_at(self.time.now() + duration, command)

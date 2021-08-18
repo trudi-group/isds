@@ -73,7 +73,7 @@ impl ContinuousAutomaticNodePoker {
     }
     fn random_wait(&self, rng: &mut impl Rng) -> SimSeconds {
         let time = OrderedFloat(self.poke_interval_distribution.sample(rng));
-        cmp::max(OrderedFloat(f64::EPSILON), time)
+        cmp::max(OrderedFloat(f64::MIN_POSITIVE), time)
     }
 }
 impl EventHandlerMut for ContinuousAutomaticNodePoker {

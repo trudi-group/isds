@@ -62,7 +62,7 @@ impl Simulation {
         }
     }
     pub fn schedule_now(&mut self, event: Event) {
-        self.schedule_at(self.time.now() + f64::EPSILON, event)
+        self.schedule_at(self.time.now(), event)
     }
     pub fn schedule_in(&mut self, duration: SimSeconds, event: Event) {
         self.schedule_at(self.time.now() + duration, event)
