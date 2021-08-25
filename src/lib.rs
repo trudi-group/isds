@@ -104,7 +104,10 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             model.sim.time.toggle_paused();
         }
         Msg::UserMakeFaster => {
-            model.sim.time.set_speed(model.sim.time.speed() * 10f64);
+            model
+                .sim
+                .time
+                .set_speed((model.sim.time.speed() * 10f64).min(1000f64));
         }
         Msg::UserMakeSlower => {
             model.sim.time.set_speed(model.sim.time.speed() / 10f64);
