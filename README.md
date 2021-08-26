@@ -15,6 +15,7 @@ Demo: https://trudi.weizenbaum-institut.de/isds_prototype/
 1. Open [localhost:8000](http://localhost:8000) in a browser.
 1. Hack around.
 1. Refresh your browser to see changes.
+1. (optional) Press `d` on your keyboard to see some `d`ebug infos.
 
 Note: `cargo watch` builds without optimizations; it you want performance you should use `cargo make build_release` instead.
 

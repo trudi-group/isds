@@ -189,6 +189,9 @@ fn view_help(show_help: bool) -> Node<Msg> {
 
         Links between nodes disappear and reappear when you click on them.
 
+        Try partitioning the network to create a fork!
+        Then have a look at what happens when you reconnect the partitions.
+
         ## Some handy keyboard shortcuts
 
         - `[space]` ⇨ pause/play simulation
@@ -198,7 +201,7 @@ fn view_help(show_help: bool) -> Node<Msg> {
 
         ## Where is the code?
 
-        [Here](https://gitlab.informatik.hu-berlin.de/wfg17/isds-bitcoin-prototype), for now.
+        [Here](https://github.com/wiberlin/isds-bitcoin-prototype).
 
         ## Feedback is very welcome!
 
