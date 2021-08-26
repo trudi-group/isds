@@ -82,8 +82,7 @@ impl<P: Protocol> InvokeProtocolForAllNodes<P> {
             NodeEvent::MessageArrived(message) => {
                 let (underlay_message, payload) = sim
                     .world
-                    .query_one_mut::<(&UnderlayMessage, &P::MessagePayload)>(message)
-                    .unwrap(); // FIXME this will break if we use multiple protocols
+                    .query_one_mut::<(&UnderlayMessage, &P::MessagePayload)>(message)?;
                 let (underlay_message, payload) = (*underlay_message, payload.clone());
                 // sim.log(format!(
                 //     "{}: Got message from {}",
@@ -115,5 +114,45 @@ impl<P: Protocol> EventHandlerMut for InvokeProtocolForAllNodes<P> {
         } else {
             Ok(())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::random_walks::RandomWalks;
+    use crate::simple_flooding::{SimpleFlooding, SimpleFloodingState};
+    use wasm_bindgen_test::*;
+
+    wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
+
+    #[wasm_bindgen_test]
+    fn invoking_two_protocols_for_all_nodes_is_possible() {
+        let mut sim = Simulation::new();
+        sim.do_now(SpawnRandomNodes(8));
+        sim.do_now(MakeDelaunayNetwork);
+        sim.catch_up(&mut [], &mut [], 1.);
+
+        let flooded_value: u32 = 42;
+        let start_node = sim.pick_random_node().unwrap();
+        SimpleFlooding::flood(&mut sim.node_interface(start_node), flooded_value);
+        sim.do_now(PokeNode(start_node)); // will start a random walk
+
+        sim.catch_up(
+            &mut [
+                &mut InvokeProtocolForAllNodes(SimpleFlooding::<u32>::new()),
+                &mut InvokeProtocolForAllNodes(RandomWalks::new(23)),
+            ],
+            &mut [],
+            1000.,
+        );
+
+        let test_node = sim.pick_random_node().unwrap();
+        assert!(sim
+            .world
+            .query_one_mut::<&SimpleFloodingState<u32>>(test_node)
+            .unwrap()
+            .own_haves
+            .contains(&flooded_value));
     }
 }
