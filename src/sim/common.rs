@@ -76,7 +76,7 @@ impl ContinuousAutomaticNodePoker {
         cmp::max(OrderedFloat(f64::MIN_POSITIVE), time)
     }
 }
-impl EventHandlerMut for ContinuousAutomaticNodePoker {
+impl EventHandler for ContinuousAutomaticNodePoker {
     fn handle_event(&mut self, sim: &mut Simulation, event: Event) -> Result<(), Box<dyn Error>> {
         if let Event::Generic(entity) = event {
             if entity == self.timer_entity {

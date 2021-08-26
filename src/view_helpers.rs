@@ -104,7 +104,7 @@ impl ViewCache {
         }
     }
 }
-impl sim::EventHandler for ViewCache {
+impl sim::EventWatcher for ViewCache {
     fn handle_event(&mut self, sim: &Simulation, event: Event) -> Result<(), Box<dyn Error>> {
         if let Event::Command(_) = event {
             // TODO: We probably don't want to do this *that* often.

@@ -20,7 +20,7 @@ impl Simulation {
 }
 
 pub struct Handler;
-impl EventHandlerMut for Handler {
+impl EventHandler for Handler {
     fn handle_event(&mut self, sim: &mut Simulation, event: Event) -> Result<(), Box<dyn Error>> {
         if let Event::Command(command) = event {
             let command = sim
@@ -54,7 +54,7 @@ mod tests {
         let mut sim = Simulation::new();
 
         sim.do_now(TestCommand);
-        sim.catch_up(&mut [], &mut [], 1000.);
+        sim.catch_up(1000.);
         let expected = vec![true];
         let actual: Vec<bool> = sim
             .world

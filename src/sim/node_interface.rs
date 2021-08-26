@@ -107,7 +107,7 @@ impl<P: Protocol> InvokeProtocolForAllNodes<P> {
         Ok(())
     }
 }
-impl<P: Protocol> EventHandlerMut for InvokeProtocolForAllNodes<P> {
+impl<P: Protocol> EventHandler for InvokeProtocolForAllNodes<P> {
     fn handle_event(&mut self, sim: &mut Simulation, event: Event) -> Result<(), Box<dyn Error>> {
         if let Event::Node(node, event) = event {
             self.handle_node_event(sim, node, event)
@@ -129,23 +129,19 @@ mod tests {
     #[wasm_bindgen_test]
     fn invoking_two_protocols_for_all_nodes_is_possible() {
         let mut sim = Simulation::new();
+        sim.add_event_handler(InvokeProtocolForAllNodes(SimpleFlooding::<u32>::new()));
+        sim.add_event_handler(InvokeProtocolForAllNodes(RandomWalks::new(23)));
+
         sim.do_now(SpawnRandomNodes(8));
         sim.do_now(MakeDelaunayNetwork);
-        sim.catch_up(&mut [], &mut [], 1.);
+        sim.catch_up(10.);
 
         let flooded_value: u32 = 42;
         let start_node = sim.pick_random_node().unwrap();
         SimpleFlooding::flood(&mut sim.node_interface(start_node), flooded_value);
         sim.do_now(PokeNode(start_node)); // will start a random walk
 
-        sim.catch_up(
-            &mut [
-                &mut InvokeProtocolForAllNodes(SimpleFlooding::<u32>::new()),
-                &mut InvokeProtocolForAllNodes(RandomWalks::new(23)),
-            ],
-            &mut [],
-            1000.,
-        );
+        sim.catch_up(1000.);
 
         let test_node = sim.pick_random_node().unwrap();
         assert!(sim

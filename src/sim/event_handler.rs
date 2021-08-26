@@ -1,9 +1,9 @@
 use super::*;
 
-pub trait EventHandler {
+pub trait EventWatcher {
     fn handle_event(&mut self, sim: &Simulation, event: Event) -> Result<(), Box<dyn Error>>;
 }
 
-pub trait EventHandlerMut {
+pub trait EventHandler {
     fn handle_event(&mut self, sim: &mut Simulation, event: Event) -> Result<(), Box<dyn Error>>;
 }

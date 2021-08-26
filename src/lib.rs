@@ -20,8 +20,6 @@ pub struct Model {
     pub sim: Simulation,
     pub view_cache: ViewCache,
     pub fps: FPSCounter,
-    pub node_logic: Box<dyn EventHandlerMut>,
-    pub poker: Box<dyn EventHandlerMut>,
     pub show_help: bool,
     pub show_debug_infos: bool,
 }
@@ -38,22 +36,20 @@ fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
     }));
 
     let mut sim = Simulation::new();
-    let mut node_logic = Box::new(InvokeProtocolForAllNodes(
+    sim.add_event_handler(InvokeProtocolForAllNodes(
         // simple_flooding::SimpleFlooding::<u32>::default(),
         // random_walks::RandomWalks::new(1024),
         nakamoto_consensus::NakamotoConsensus::default(),
     ));
-    let mut poker = Box::new(ContinuousAutomaticNodePoker::new(&mut sim, 2.));
-    let mut view_cache = ViewCache::default();
+    let poker = ContinuousAutomaticNodePoker::new(&mut sim, 2.);
+    sim.add_event_handler(poker);
+    let view_cache = ViewCache::default();
 
     sim.do_now(SpawnRandomNodes(32));
     sim.do_now(MakeDelaunayNetwork);
     // sim.do_now(PokeMultipleRandomNodes(1));
 
-    // TODO clean this up once init logic is nicer
-    // TODO improve event handler "registration" ergonomics...
     // sim.catch_up(
-    //     &mut [&mut *node_logic, &mut *poker],
     //     &mut [&mut view_cache],
     //     100.,
     // );
@@ -62,8 +58,6 @@ fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
         sim,
         view_cache,
         fps: FPSCounter::default(),
-        node_logic,
-        poker,
         show_help: true,
         show_debug_infos: false,
     }
@@ -93,11 +87,9 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             let elapsed_browser_seconds = render_info.timestamp_delta.unwrap_or_default() / 1000.;
             model.fps.register_render_interval(elapsed_browser_seconds);
 
-            model.sim.catch_up(
-                &mut [&mut *model.node_logic, &mut *model.poker],
-                &mut [&mut model.view_cache],
-                elapsed_browser_seconds,
-            );
+            model
+                .sim
+                .catch_up_with_watchers(&mut [&mut model.view_cache], elapsed_browser_seconds);
             orders.after_next_render(Msg::Rendered);
         }
         Msg::UserPausePlay => {

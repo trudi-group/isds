@@ -5,6 +5,7 @@ pub use std::error::Error;
 
 use rand::rngs::ThreadRng;
 use std::collections::VecDeque;
+use std::mem;
 
 mod command;
 mod common;
@@ -47,6 +48,7 @@ pub struct Simulation {
     pub time: Time,
     pub rng: ThreadRng,
     pub logger: Logger,
+    additional_event_handlers: Vec<Box<dyn EventHandler>>,
     event_queue: EventQueue,
     underlay_config: UnderlayConfig,
 }
@@ -57,9 +59,13 @@ impl Simulation {
             time: Time::new(0.1),
             rng: rand::thread_rng(),
             logger: Logger::new(),
+            additional_event_handlers: vec![],
             event_queue: EventQueue::new(),
             underlay_config: UnderlayConfig::new(800., 800.),
         }
+    }
+    pub fn add_event_handler(&mut self, event_handler: impl EventHandler + 'static) {
+        self.additional_event_handlers.push(Box::new(event_handler))
     }
     pub fn schedule_now(&mut self, event: Event) {
         self.schedule_at(self.time.now(), event)
@@ -70,24 +76,17 @@ impl Simulation {
     pub fn schedule_at(&mut self, time_due: SimSeconds, event: Event) {
         self.event_queue.push(time_due, event);
     }
-    pub fn catch_up(
+    pub fn catch_up(&mut self, elapsed_real_time: RealSeconds) {
+        self.catch_up_with_watchers(&mut [], elapsed_real_time)
+    }
+    pub fn catch_up_with_watchers(
         &mut self,
-        event_handlers_mut: &mut [&mut dyn EventHandlerMut],
-        event_handlers: &mut [&mut dyn EventHandler],
+        event_watchers: &mut [&mut dyn EventWatcher],
         elapsed_real_time: RealSeconds,
     ) {
-        self.work_until(
-            event_handlers_mut,
-            event_handlers,
-            self.time.after(elapsed_real_time),
-        )
+        self.work_until(event_watchers, self.time.after(elapsed_real_time))
     }
-    fn work_until(
-        &mut self,
-        event_handlers_mut: &mut [&mut dyn EventHandlerMut],
-        event_handlers: &mut [&mut dyn EventHandler],
-        sim_time: SimSeconds,
-    ) {
+    fn work_until(&mut self, event_watchers: &mut [&mut dyn EventWatcher], sim_time: SimSeconds) {
         while self
             .event_queue
             .peek()
@@ -96,7 +95,7 @@ impl Simulation {
         {
             let (time_due, event) = self.event_queue.pop().unwrap();
             self.time.advance_sim_time_to(time_due);
-            if let Err(e) = self.handle_event(event_handlers_mut, event_handlers, event) {
+            if let Err(e) = self.handle_event(event_watchers, event) {
                 self.log(format!("Error handling event: {}", e));
             }
         }
@@ -104,15 +103,23 @@ impl Simulation {
     }
     fn handle_event(
         &mut self,
-        event_handlers_mut: &mut [&mut dyn EventHandlerMut],
-        event_handlers: &mut [&mut dyn EventHandler],
+        event_watchers: &mut [&mut dyn EventWatcher],
         event: Event,
     ) -> Result<(), Box<dyn Error>> {
         command::Handler.handle_event(self, event)?;
-        for handler in event_handlers_mut.iter_mut() {
+
+        // TODO clean this up by splitting `Simulation` into something like `Logic` and `State`
+        let mut additional_event_handlers = mem::take(&mut self.additional_event_handlers);
+        for handler in additional_event_handlers.iter_mut() {
             handler.handle_event(self, event)?;
         }
-        for handler in event_handlers.iter_mut() {
+        let new_handlers = mem::replace(
+            &mut self.additional_event_handlers,
+            additional_event_handlers,
+        );
+        debug_assert!(new_handlers.is_empty());
+
+        for handler in event_watchers.iter_mut() {
             handler.handle_event(self, event)?;
         }
         Despawner.handle_event(self, event)?;

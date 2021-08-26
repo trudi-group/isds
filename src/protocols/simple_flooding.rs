@@ -150,20 +150,17 @@ mod tests {
     #[wasm_bindgen_test]
     fn simple_flooding_floods() {
         let mut sim = Simulation::new();
+        sim.add_event_handler(InvokeProtocolForAllNodes(SimpleFlooding::<u32>::new()));
+
         sim.do_now(SpawnRandomNodes(8));
         sim.do_now(MakeDelaunayNetwork);
-        sim.catch_up(&mut [], &mut [], 1.);
+        sim.catch_up(1.);
 
         let flooded_value: u32 = 42;
-
         let start_node = sim.pick_random_node().unwrap();
         SimpleFlooding::flood(&mut sim.node_interface(start_node), flooded_value);
 
-        sim.catch_up(
-            &mut [&mut InvokeProtocolForAllNodes(SimpleFlooding::<u32>::new())],
-            &mut [],
-            1000.,
-        );
+        sim.catch_up(1000.);
 
         let received_values: Vec<HashSet<u32>> = sim
             .world
@@ -182,6 +179,8 @@ mod tests {
     #[wasm_bindgen_test]
     fn simple_flooding_recovers_from_splits() {
         let mut sim = Simulation::new();
+        sim.add_event_handler(InvokeProtocolForAllNodes(SimpleFlooding::<u32>::new()));
+
         let node1 = sim.spawn_random_node();
         let node2 = sim.spawn_random_node();
 
@@ -189,19 +188,11 @@ mod tests {
 
         SimpleFlooding::flood(&mut sim.node_interface(node1), flooded_value);
 
-        sim.catch_up(
-            &mut [&mut InvokeProtocolForAllNodes(SimpleFlooding::<u32>::new())],
-            &mut [],
-            1000.,
-        );
+        sim.catch_up(1000.);
 
         add_peer(&mut sim, node1, node2);
 
-        sim.catch_up(
-            &mut [&mut InvokeProtocolForAllNodes(SimpleFlooding::<u32>::new())],
-            &mut [],
-            1000.,
-        );
+        sim.catch_up(1000.);
 
         assert!(sim
             .world

@@ -4,40 +4,9 @@ use view_helpers::*;
 
 // `view` describes what to display.
 pub fn view(model: &Model) -> impl IntoNodes<Msg> {
-    let sim_time = model.sim.time.now();
     let buffer_space = 50.;
     nodes![
-        div![
-            style! {
-                St::MaxWidth => px(1024),
-            },
-            button![
-                if model.sim.time.paused() {
-                    "▶️"
-                } else {
-                    "⏸️"
-                },
-                ev(Ev::Click, |_| Msg::UserPausePlay),
-            ],
-            button!["⏪", ev(Ev::Click, |_| Msg::UserMakeSlower),],
-            button!["⏩", ev(Ev::Click, |_| Msg::UserMakeFaster),],
-            format!(
-                " | Sim time (s): {:.3} ({}✕)",
-                sim_time,
-                model.sim.time.speed() as f32 // downcasting makes it look nicer when printed
-            ),
-            IF!(model.show_debug_infos => format!(" | FPS: {:.0}", model.fps.get())),
-            span![
-                style! {
-                    St::Float => "right",
-                    St::MarginTop => px(5),
-                    St::MarginBottom => px(5),
-                    St::Cursor => "pointer",
-                },
-                "[?]",
-                ev(Ev::Click, move |_| Msg::UserToggleHelp),
-            ]
-        ],
+        view_menu_bar(model),
         svg![
             attrs! {
                 At::ViewBox => format!("{} {} {} {}",
@@ -53,11 +22,45 @@ pub fn view(model: &Model) -> impl IntoNodes<Msg> {
             },
             IF!(model.show_debug_infos => view_palette(&model.view_cache)),
             view_edges(&model.view_cache),
-            view_messages(&model.sim.world, &model.view_cache, sim_time),
+            view_messages(&model.sim.world, &model.view_cache, model.sim.time.now()),
             view_nodes(&model.sim.world, &model.view_cache),
         ],
         IF!(model.show_debug_infos => view_log(model.sim.logger.entries())),
         view_help(model.show_help),
+    ]
+}
+
+fn view_menu_bar(model: &Model) -> Node<Msg> {
+    div![
+        style! {
+            St::MaxWidth => px(1024),
+        },
+        button![
+            if model.sim.time.paused() {
+                "▶️"
+            } else {
+                "⏸️"
+            },
+            ev(Ev::Click, |_| Msg::UserPausePlay),
+        ],
+        button!["⏪", ev(Ev::Click, |_| Msg::UserMakeSlower),],
+        button!["⏩", ev(Ev::Click, |_| Msg::UserMakeFaster),],
+        format!(
+            " | Sim time (s): {:.3} ({}✕)",
+            model.sim.time.now(),
+            model.sim.time.speed() as f32 // downcasting makes it look nicer when printed
+        ),
+        IF!(model.show_debug_infos => format!(" | FPS: {:.0}", model.fps.get())),
+        span![
+            style! {
+                St::Float => "right",
+                St::MarginTop => px(5),
+                St::MarginBottom => px(5),
+                St::Cursor => "pointer",
+            },
+            "[?]",
+            ev(Ev::Click, move |_| Msg::UserToggleHelp),
+        ]
     ]
 }
 

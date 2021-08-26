@@ -154,6 +154,8 @@ mod tests {
     #[wasm_bindgen_test]
     fn blocks_get_distributed() {
         let mut sim = Simulation::new();
+        sim.add_event_handler(InvokeProtocolForAllNodes(NakamotoConsensus::default()));
+
         let node1 = sim.spawn_random_node();
         let node2 = sim.spawn_random_node();
         let node3 = sim.spawn_random_node();
@@ -162,10 +164,8 @@ mod tests {
         add_peer(&mut sim, node2, node3);
         add_peer(&mut sim, node3, node2);
 
-        let mut node_logic = Box::new(InvokeProtocolForAllNodes(NakamotoConsensus::default()));
-
         sim.do_now(PokeNode(node1));
-        sim.catch_up(&mut [&mut *node_logic], &mut [], 100.);
+        sim.catch_up(100.);
 
         let state1 = sim
             .world
@@ -192,6 +192,8 @@ mod tests {
     #[wasm_bindgen_test]
     fn forks_get_registered() {
         let mut sim = Simulation::new();
+        sim.add_event_handler(InvokeProtocolForAllNodes(NakamotoConsensus::default()));
+
         let node1 = sim.spawn_random_node();
         let node2 = sim.spawn_random_node();
         let node3 = sim.spawn_random_node();
@@ -200,14 +202,12 @@ mod tests {
         add_peer(&mut sim, node2, node3);
         add_peer(&mut sim, node3, node2);
 
-        let mut node_logic = Box::new(InvokeProtocolForAllNodes(NakamotoConsensus::default()));
-
         sim.do_now(PokeNode(node1));
-        sim.catch_up(&mut [&mut *node_logic], &mut [], 100.);
+        sim.catch_up(100.);
 
         sim.do_now(PokeNode(node1));
         sim.do_now(PokeNode(node3));
-        sim.catch_up(&mut [&mut *node_logic], &mut [], 100.);
+        sim.catch_up(100.);
 
         let state1 = sim
             .world
@@ -234,6 +234,8 @@ mod tests {
     #[wasm_bindgen_test]
     fn forks_get_resolved() {
         let mut sim = Simulation::new();
+        sim.add_event_handler(InvokeProtocolForAllNodes(NakamotoConsensus::default()));
+
         let node1 = sim.spawn_random_node();
         let node2 = sim.spawn_random_node();
         let node3 = sim.spawn_random_node();
@@ -242,17 +244,15 @@ mod tests {
         add_peer(&mut sim, node2, node3);
         add_peer(&mut sim, node3, node2);
 
-        let mut node_logic = Box::new(InvokeProtocolForAllNodes(NakamotoConsensus::default()));
-
         sim.do_now(PokeNode(node1));
-        sim.catch_up(&mut [&mut *node_logic], &mut [], 100.);
+        sim.catch_up(100.);
 
         sim.do_now(PokeNode(node1));
         sim.do_now(PokeNode(node3));
-        sim.catch_up(&mut [&mut *node_logic], &mut [], 100.);
+        sim.catch_up(100.);
 
         sim.do_now(PokeNode(node1));
-        sim.catch_up(&mut [&mut *node_logic], &mut [], 100.);
+        sim.catch_up(100.);
 
         let state1 = sim
             .world
@@ -272,16 +272,16 @@ mod tests {
     #[wasm_bindgen_test]
     fn in_perfect_case_all_stored_blocks_are_connected_to_genesis() {
         let mut sim = Simulation::new();
+        sim.add_event_handler(InvokeProtocolForAllNodes(NakamotoConsensus::default()));
+
         sim.do_now(SpawnRandomNodes(8));
         sim.do_now(MakeDelaunayNetwork);
 
-        let mut node_logic = Box::new(InvokeProtocolForAllNodes(NakamotoConsensus::default()));
-
-        sim.catch_up(&mut [&mut *node_logic], &mut [], 1.);
+        sim.catch_up(1.);
 
         for _ in 0..20 {
             sim.do_now(PokeMultipleRandomNodes(1));
-            sim.catch_up(&mut [&mut *node_logic], &mut [], 100.);
+            sim.catch_up(100.);
         }
 
         let tested_node = sim.pick_random_node().unwrap();
@@ -311,7 +311,7 @@ mod tests {
     #[wasm_bindgen_test]
     fn nakamoto_consensus_recovers_from_splits() {
         let mut sim = Simulation::new();
-        let mut node_logic = Box::new(InvokeProtocolForAllNodes(NakamotoConsensus::default()));
+        sim.add_event_handler(InvokeProtocolForAllNodes(NakamotoConsensus::default()));
 
         let node1 = sim.spawn_random_node();
         let node2 = sim.spawn_random_node();
@@ -323,12 +323,12 @@ mod tests {
         sim.do_now(PokeNode(node2));
         sim.do_now(PokeNode(node2));
 
-        sim.catch_up(&mut [&mut *node_logic], &mut [], 10.);
+        sim.catch_up(10.);
 
         add_peer(&mut sim, node1, node2);
         add_peer(&mut sim, node2, node1);
 
-        sim.catch_up(&mut [&mut *node_logic], &mut [], 10.);
+        sim.catch_up(10.);
 
         let state1 = sim
             .world
