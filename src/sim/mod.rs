@@ -21,7 +21,7 @@ use despawner::Despawner;
 pub use command::Command;
 pub use common::*;
 pub use event_handler::*;
-pub use event_queue::{EventQueue, TimedEvent};
+pub use event_queue::EventQueue;
 pub use logger::*;
 pub use node_interface::*;
 pub use time::*;
@@ -68,7 +68,7 @@ impl Simulation {
         self.schedule_at(self.time.now() + duration, event)
     }
     pub fn schedule_at(&mut self, time_due: SimSeconds, event: Event) {
-        self.event_queue.push(TimedEvent { time_due, event });
+        self.event_queue.push(time_due, event);
     }
     pub fn catch_up(
         &mut self,
@@ -91,10 +91,10 @@ impl Simulation {
         while self
             .event_queue
             .peek()
-            .filter(|event| event.time_due <= sim_time)
+            .filter(|&(time_due, _)| time_due <= sim_time)
             .is_some()
         {
-            let TimedEvent { time_due, event } = self.event_queue.pop().unwrap();
+            let (time_due, event) = self.event_queue.pop().unwrap();
             self.time.advance_sim_time_to(time_due);
             if let Err(e) = self.handle_event(event_handlers_mut, event_handlers, event) {
                 self.log(format!("Error handling event: {}", e));
@@ -147,9 +147,22 @@ mod tests {
     wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
 
     #[wasm_bindgen_test]
-    // FIXME this test should actually be failing right now...
-    fn schedule_immediate_maintains_schedule_order() {
+    fn simultaneous_events_are_executed_in_order_of_scheduling() {
         let mut sim = Simulation::new();
+
+        let node = sim.spawn_random_node();
+
+        let event4 = Event::Node(node, NodeEvent::Poke);
+        let event5 = Event::Node(
+            node,
+            NodeEvent::MessageArrived(sim.world.spawn(("fake message", 73))),
+        );
+        let event6 = Event::Generic(sim.world.spawn((42,)));
+
+        let target_time = OrderedFloat(120.);
+        sim.schedule_at(target_time, event4);
+        sim.schedule_at(target_time, event5);
+        sim.schedule_at(target_time, event6);
 
         let event1 = Event::Generic(sim.world.spawn((23,)));
         let event2 = Event::Generic(sim.world.spawn((17,)));
@@ -159,32 +172,11 @@ mod tests {
         sim.schedule_now(event2);
         sim.schedule_now(event3);
 
-        assert_eq!(event1, sim.event_queue.pop().unwrap().event);
-        assert_eq!(event2, sim.event_queue.pop().unwrap().event);
-        assert_eq!(event3, sim.event_queue.pop().unwrap().event);
-    }
-
-    #[wasm_bindgen_test]
-    // FIXME this test should actually be failing right now...
-    fn schedule_at_same_time_maintains_schedule_order() {
-        let mut sim = Simulation::new();
-
-        let node = sim.spawn_random_node();
-
-        let event1 = Event::Node(node, NodeEvent::Poke);
-        let event2 = Event::Node(
-            node,
-            NodeEvent::MessageArrived(sim.world.spawn(("fake message", 73))),
-        );
-        let event3 = Event::Generic(sim.world.spawn((42,)));
-
-        let target_time = OrderedFloat(120.);
-        sim.schedule_at(target_time, event1);
-        sim.schedule_at(target_time, event2);
-        sim.schedule_at(target_time, event3);
-
-        assert_eq!(event1, sim.event_queue.pop().unwrap().event);
-        assert_eq!(event2, sim.event_queue.pop().unwrap().event);
-        assert_eq!(event3, sim.event_queue.pop().unwrap().event);
+        assert_eq!(event1, sim.event_queue.pop().unwrap().1);
+        assert_eq!(event2, sim.event_queue.pop().unwrap().1);
+        assert_eq!(event3, sim.event_queue.pop().unwrap().1);
+        assert_eq!(event4, sim.event_queue.pop().unwrap().1);
+        assert_eq!(event5, sim.event_queue.pop().unwrap().1);
+        assert_eq!(event6, sim.event_queue.pop().unwrap().1);
     }
 }
