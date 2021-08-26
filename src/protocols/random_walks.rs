@@ -31,7 +31,7 @@ impl Protocol for RandomWalks {
     }
 }
 
-fn random_step(node: &mut NodeInterface, current_ttl: usize) -> Result<Entity, String> {
+pub fn random_step(node: &mut NodeInterface, current_ttl: usize) -> Result<Entity, String> {
     if let Some(dest) = random_peer(node) {
         Ok(node.send_message(dest, RandomWalkMessage::new(current_ttl - 1)))
     } else {

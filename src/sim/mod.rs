@@ -8,24 +8,27 @@ use std::collections::VecDeque;
 use std::mem;
 
 mod command;
-mod common;
 mod despawner;
-mod event_handler;
+mod event_handlers;
 mod event_queue;
 mod logger;
-mod node_interface;
+mod peers;
+mod pokes;
+mod protocol;
 mod time;
 mod underlay;
 
 use despawner::Despawner;
 
 pub use command::Command;
-pub use common::*;
-pub use event_handler::*;
+pub use event_handlers::{EventHandler, EventWatcher};
 pub use event_queue::EventQueue;
-pub use logger::*;
-pub use node_interface::*;
-pub use time::*;
+pub use logger::Logger;
+pub use protocol::{InvokeProtocolForAllNodes, NodeInterface, Payload, Protocol};
+pub use time::{OrderedFloat, RealSeconds, SimSeconds, Time, TimeSpan};
+
+pub use peers::*;
+pub use pokes::*;
 pub use underlay::*;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]

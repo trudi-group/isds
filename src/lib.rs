@@ -41,15 +41,14 @@ fn init(_: Url, orders: &mut impl Orders<Msg>) -> Model {
         // random_walks::RandomWalks::new(1024),
         nakamoto_consensus::NakamotoConsensus::default(),
     ));
-    let poker = ContinuousAutomaticNodePoker::new(&mut sim, 2.);
-    sim.add_event_handler(poker);
+    sim.do_now(StartAutomaticRandomNodePokes(2.));
     let view_cache = ViewCache::default();
 
     sim.do_now(SpawnRandomNodes(32));
     sim.do_now(MakeDelaunayNetwork);
     // sim.do_now(PokeMultipleRandomNodes(1));
 
-    // sim.catch_up(
+    // sim.catch_up_with_watchers(
     //     &mut [&mut view_cache],
     //     100.,
     // );

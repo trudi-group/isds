@@ -2,6 +2,33 @@ use hecs::QueryItem;
 
 use super::*;
 
+// A type alias...
+pub trait Payload: 'static + Send + Sync + Clone {}
+impl<T> Payload for T where T: 'static + Send + Sync + Clone {}
+
+pub trait Protocol {
+    type MessagePayload: Payload;
+
+    fn handle_message(
+        &self,
+        node: NodeInterface,
+        underlay_message: UnderlayMessage,
+        message_payload: Self::MessagePayload,
+    ) -> Result<(), Box<dyn Error>>;
+
+    fn handle_poke(&self, node: NodeInterface) -> Result<(), Box<dyn Error>>;
+
+    /// Optional because not every protocol needs peers or wants to use the default peer set
+    /// abstraction.
+    fn handle_peer_set_update(
+        &self,
+        _node: NodeInterface,
+        _update: PeerSetUpdate,
+    ) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
+}
+
 pub struct NodeInterface<'a> {
     sim: &'a mut Simulation,
     node: Entity,
@@ -43,33 +70,6 @@ impl Simulation {
     }
 }
 
-// A type alias...
-pub trait Payload: 'static + Send + Sync + Clone {}
-impl<T> Payload for T where T: 'static + Send + Sync + Clone {}
-
-pub trait Protocol {
-    type MessagePayload: Payload;
-
-    fn handle_message(
-        &self,
-        node: NodeInterface,
-        underlay_message: UnderlayMessage,
-        message_payload: Self::MessagePayload,
-    ) -> Result<(), Box<dyn Error>>;
-
-    fn handle_poke(&self, node: NodeInterface) -> Result<(), Box<dyn Error>>;
-
-    /// Optional because not every protocol needs peers or wants to use the default peer set
-    /// abstraction.
-    fn handle_peer_set_update(
-        &self,
-        _node: NodeInterface,
-        _update: PeerSetUpdate,
-    ) -> Result<(), Box<dyn Error>> {
-        Ok(())
-    }
-}
-
 pub struct InvokeProtocolForAllNodes<P: Protocol>(pub P);
 impl<P: Protocol> InvokeProtocolForAllNodes<P> {
     fn handle_node_event(
@@ -80,17 +80,20 @@ impl<P: Protocol> InvokeProtocolForAllNodes<P> {
     ) -> Result<(), Box<dyn Error>> {
         match event {
             NodeEvent::MessageArrived(message) => {
-                let (underlay_message, payload) = sim
+                if let Ok((underlay_message, payload)) = sim
                     .world
-                    .query_one_mut::<(&UnderlayMessage, &P::MessagePayload)>(message)?;
-                let (underlay_message, payload) = (*underlay_message, payload.clone());
-                // sim.log(format!(
-                //     "{}: Got message from {}",
-                //     sim.name(node),
-                //     sim.name(underlay_message.source),
-                // ));
-                self.0
-                    .handle_message(sim.node_interface(node), underlay_message, payload)?;
+                    .query_one_mut::<(&UnderlayMessage, &P::MessagePayload)>(message)
+                {
+                    let (underlay_message, payload) = (*underlay_message, payload.clone());
+                    // sim.log(format!(
+                    //     "{}: Got message from {}",
+                    //     sim.name(node),
+                    //     sim.name(underlay_message.source),
+                    // ));
+                    self.0
+                        .handle_message(sim.node_interface(node), underlay_message, payload)?;
+                }
+                // not my message payload, not my business
             }
             NodeEvent::TimerFired(_) => {
                 todo!();
@@ -143,7 +146,7 @@ mod tests {
 
         sim.catch_up(1000.);
 
-        let test_node = sim.pick_random_node().unwrap();
+        let test_node = sim.pick_random_other_node(start_node).unwrap();
         assert!(sim
             .world
             .query_one_mut::<&SimpleFloodingState<u32>>(test_node)
