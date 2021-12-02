@@ -1,0 +1,4 @@
+[[hooks]]
+stage = "build"
+command = "wasm-pack"
+command_arguments = ["test", "--headless", "--firefox"]
