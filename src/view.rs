@@ -1,152 +1,128 @@
 use super::*;
-use indoc::indoc;
 use view_helpers::*;
 
-// `view` describes what to display.
-pub fn view(model: &Model) -> impl IntoNodes<Msg> {
-    let buffer_space = 50.;
-    nodes![
-        view_menu_bar(model),
-        svg![
-            attrs! {
-                At::ViewBox => format!("{} {} {} {}",
-                    -buffer_space,
-                    -buffer_space,
-                    model.sim.underlay_width() + 2. * buffer_space,
-                    model.sim.underlay_height() + 2. * buffer_space
-                ),
-            },
-            style! {
-                St::BorderStyle => "solid",
-                St::MaxWidth => px(1024),
-            },
-            IF!(model.show_debug_infos => view_palette(&model.view_cache)),
-            view_edges(&model.view_cache),
-            view_nodes(&model.sim.world, &model.view_cache),
-            view_messages(&model.sim.world, &model.view_cache, model.sim.time.now()),
-        ],
-        IF!(model.show_debug_infos => view_log(model.sim.logger.entries())),
-        view_help(model.show_help),
-    ]
+// TODO: handle key events in top-level element!
+
+impl Isds {
+    pub fn view_menu_bar(&self, ctx: &Context<Isds>) -> Html {
+        let link = ctx.link();
+        html!{
+            <div style="max-width: 1024px">
+                <button onclick={ link.callback(|_| Msg::UserPausePlay) }>
+                    if self.sim.time.paused() {
+                        { "▶️" }
+                    } else {
+                        { "⏸️" }
+                    }
+                </button>
+                <button onclick={ link.callback(|_| Msg::UserMakeSlower) }>
+                    { "⏪" }
+                </button>
+                <button onclick={ link.callback(|_| Msg::UserMakeFaster) }>
+                    { "⏩" }
+                </button>
+                { format!(
+                    " | Sim time (s): {:.3} ({}✕)",
+                    self.sim.time.now(),
+                    self.sim.time.speed() as f32 // downcasting makes it look nicer when printed
+                ) }
+                if self.show_debug_infos {
+                    { format!(" | FPS: {:.0}", self.fps.get()) }
+                }
+                <span
+                    style=r#"float: "right"; margin-top: 5px; margin-bottom: 5px, cursor: "pointer""#
+                    onclick={ link.callback(|_| Msg::UserToggleHelp) }
+                >
+                    { "[?]" }
+                </span>
+            </div>
+        }
+    }
 }
 
-fn view_menu_bar(model: &Model) -> Node<Msg> {
-    div![
-        style! {
-            St::MaxWidth => px(1024),
-        },
-        button![
-            if model.sim.time.paused() {
-                "▶️"
-            } else {
-                "⏸️"
-            },
-            ev(Ev::Click, |_| Msg::UserPausePlay),
-        ],
-        button!["⏪", ev(Ev::Click, |_| Msg::UserMakeSlower),],
-        button!["⏩", ev(Ev::Click, |_| Msg::UserMakeFaster),],
-        format!(
-            " | Sim time (s): {:.3} ({}✕)",
-            model.sim.time.now(),
-            model.sim.time.speed() as f32 // downcasting makes it look nicer when printed
-        ),
-        IF!(model.show_debug_infos => format!(" | FPS: {:.0}", model.fps.get())),
-        span![
-            style! {
-                St::Float => "right",
-                St::MarginTop => px(5),
-                St::MarginBottom => px(5),
-                St::Cursor => "pointer",
-            },
-            "[?]",
-            ev(Ev::Click, move |_| Msg::UserToggleHelp),
-        ]
-    ]
-}
-
-fn view_palette(view_cache: &ViewCache) -> Vec<Node<Msg>> {
+pub fn view_palette(view_cache: &ViewCache) -> Html {
     view_cache
         .colors()
         .iter()
         .enumerate()
-        .map(|(i, color)| {
-            circle![attrs! {
-                At::Cx => -40. + (5 * i) as f32,
-                At::Cy => -40.,
-                At::R => 5.,
-                At::Fill => color,
-            }]
-        })
-        .collect()
+        .map(|(i, color)| html! {
+            <circle
+                cx={ format!("{}", -40 + 5 * (i as i32)) }
+                cy={ format!("{}", -40) }
+                r=5
+                fill={ color.clone() }
+            />
+            }).collect()
 }
 
-fn view_nodes(world: &World, view_cache: &ViewCache) -> Vec<Node<Msg>> {
+pub fn view_nodes(world: &World, view_cache: &ViewCache, ctx: &Context<Isds>) -> Html {
     let r = 5.0;
+    let link = ctx.link();
     world
         .query::<(&UnderlayPosition, &nakamoto_consensus::NakamotoNodeState)>()
         .into_iter()
-        .map(|(node, (pos, state))| {
-            g![
-                circle![
-                    attrs! {
-                        At::Cx => pos.x,
-                        At::Cy => pos.y,
-                        At::R => r,
-                    },
-                    ev(Ev::Click, move |_| Msg::NodeClick(node)),
-                ],
-                view_blocks(view_cache, state, pos.x + 8., pos.y - 8.),
-            ]
+        .map(|(node, (pos, state))| html! {
+            <g>
+                <circle
+                    cx={ pos.x.to_string() }
+                    cy={ pos.y.to_string() }
+                    r={ r.to_string() }
+                    onclick={ link.callback(move |_| Msg::NodeClick(node)) }
+                />
+                { view_blocks(view_cache, state, pos.x + 8., pos.y - 8.) }
+            </g>
         })
         .collect()
 }
 
-fn view_edges(view_cache: &ViewCache) -> Vec<Node<Msg>> {
+pub fn view_edges(view_cache: &ViewCache, ctx: &Context<Isds>) -> Html {
+    let link = ctx.link();
     view_cache
         .edges()
         .iter()
-        .map(|(&edge_endpoints, &(edge_type, line))| {
-            g![
-                line_![
-                    C!["phantom-link"],
-                    attrs! {
-                        At::X1 => line.start.x,
-                        At::Y1 => line.start.y,
-                        At::X2 => line.end.x,
-                        At::Y2 => line.end.y,
-                        At::Stroke => "yellow",
-                        At::StrokeWidth => 8,
-                    }
-                ],
-                IF!(edge_type != EdgeType::Phantom => line_![
-                    attrs! {
-                        At::X1 => line.start.x,
-                        At::Y1 => line.start.y,
-                        At::X2 => line.end.x,
-                        At::Y2 => line.end.y,
-                    },
-                    if edge_type == EdgeType::Undirected {
-                        attrs! {
-                            At::Stroke => "gray",
-                        }
-                    } else {
-                        // TODO: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/marker
-                        attrs! {
-                            At::Stroke => "lightgray",
-                            At::StrokeDashArray => "8,8",
-                        }
-                    },
-                ]),
-                ev(Ev::Click, move |_| Msg::LinkClick(
+        .map(|(&edge_endpoints, &(edge_type, line))| html! {
+            <g
+                onclick={ link.callback(move |_| Msg::LinkClick(
                     edge_endpoints.left(),
                     edge_endpoints.right()
-                )),
-            ]
+                )) }
+            >
+                <line
+                    class="phantom-link"
+                    x1={ line.start.x.to_string() }
+                    y1={ line.start.y.to_string() }
+                    x2={ line.end.x.to_string() }
+                    y2={ line.end.y.to_string() }
+                    stroke="yellow"
+                    stroke-width=8
+                />
+                if edge_type != EdgeType::Phantom {
+                    if edge_type == EdgeType::Undirected {
+                        <line
+                            x1={ line.start.x.to_string() }
+                            y1={ line.start.y.to_string() }
+                            x2={ line.end.x.to_string() }
+                            y2={ line.end.y.to_string() }
+                            stroke="gray"
+                        />
+                    } else {
+                        // TODO: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/marker
+                        <line
+                            x1={ line.start.x.to_string() }
+                            y1={ line.start.y.to_string() }
+                            x2={ line.end.x.to_string() }
+                            y2={ line.end.y.to_string() }
+                            stroke="lightgray"
+                            stroke-dasharray="8,8"
+                        />
+                    }
+                }
+            </g>
         })
         .collect()
 }
 
-fn view_messages(world: &World, view_cache: &ViewCache, time_now: SimSeconds) -> Vec<Node<Msg>> {
+pub fn view_messages(world: &World, view_cache: &ViewCache, time_now: SimSeconds) -> Html {
     world
         .query::<(
             &UnderlayLine,
@@ -157,104 +133,111 @@ fn view_messages(world: &World, view_cache: &ViewCache, time_now: SimSeconds) ->
         .map(|(_, (trajectory, time_span, message))| {
             let (x, y) = message_position(trajectory, time_span, time_now);
             let block = message.0;
-            circle![attrs! {
-                At::Cx => x,
-                At::Cy => y,
-                At::R => 2.0,
-                At::Fill => view_cache.color(nakamoto_consensus::to_number(block.hash())),
-            }]
-        })
-        .collect()
+            html! {
+                <circle
+                    cx={ x.to_string() }
+                    cy={ y.to_string() }
+                    r=2
+                    fill={ view_cache.color(nakamoto_consensus::to_number(block.hash())).to_string() }
+                />
+            }
+        }).collect()
 }
 
-fn view_log<'a>(
+pub fn view_log<'a>(
     message_log: impl DoubleEndedIterator<Item = &'a (SimSeconds, String)>,
-) -> Node<Msg> {
-    pre![message_log
-        .rev()
-        .map(|(time, message)| { format!("{:.3}: {}\n", time, message) })]
+) -> Html {
+    html! {
+        <pre>
+            {
+                message_log
+                    .rev()
+                    .map(|(time, message)| format!("{:.3}: {}\n", time, message)).collect::<Html>()
+            }
+        </pre>
+    }
 }
 
-fn view_help(show_help: bool) -> Node<Msg> {
-    let help_message = md!(indoc! {r#"
-        # Interactive Simulation of Nakamoto Consensus
+// pub fn view_help(show_help: bool) -> Node<Msg> {
+//     let help_message = md!(indoc! {r#"
+//         # Interactive Simulation of Nakamoto Consensus
 
-        Shows how ₿itcoin works. Roughly.
+//         Shows how ₿itcoin works. Roughly.
 
-        *Work in progress!*
+//         *Work in progress!*
 
-        ## Getting started
+//         ## Getting started
 
-        Nodes find new blocks when you click on them.
+//         Nodes find new blocks when you click on them.
 
-        Links between nodes disappear and reappear when you click on them.
+//         Links between nodes disappear and reappear when you click on them.
 
-        Try partitioning the network to create a fork!
-        Then have a look at what happens when you reconnect the partitions.
+//         Try partitioning the network to create a fork!
+//         Then have a look at what happens when you reconnect the partitions.
 
-        ## Some handy keyboard shortcuts
+//         ## Some handy keyboard shortcuts
 
-        - `[space]` ⇨ pause/play simulation
-        - `[←]`/`[→]`, `[h]`/`[l]` ⇨ control simulation speed
-        - `[m]` ⇨ a random node will "mine" a block
-        - `[?]` ⇨ show this page
+//         - `[space]` ⇨ pause/play simulation
+//         - `[←]`/`[→]`, `[h]`/`[l]` ⇨ control simulation speed
+//         - `[m]` ⇨ a random node will "mine" a block
+//         - `[?]` ⇨ show this page
 
-        ## Where is the code?
+//         ## Where is the code?
 
-        [Here](https://github.com/wiberlin/isds-bitcoin-prototype).
+//         [Here](https://github.com/wiberlin/isds-bitcoin-prototype).
 
-        ## Feedback is very welcome!
+//         ## Feedback is very welcome!
 
-        -- [Martin](https://www.weizenbaum-institut.de/en/portrait/p/martin-florian/)
-    "#});
+//         -- [Martin](https://www.weizenbaum-institut.de/en/portrait/p/martin-florian/)
+//     "#});
 
-    div![
-        style![
-            St::Display => if show_help { "block" } else { "none" },
-            St::Position => "fixed",
-            St::ZIndex => 1,
-            St::Padding => px(5),
-            St::PaddingTop => px(80),
-            St::Top =>  px(0),
-            St::Left =>  px(0),
-            St::Right =>  px(0),
-            St::Height => percent(100),
-            St::BackgroundColor => "rgba(0,0,0,0.5)",
-        ],
-        div![
-            style![
-                St::Padding => px(20),
-                St::Margin => "auto",
-                St::MaxWidth => px(900),
-                St::MaxHeight => "calc(100vh - 165px)",
-                St::OverflowY => "auto",
-                St::BackgroundColor => "white",
-            ],
-            span![
-                style! {
-                    St::Float => "right",
-                    St::MarginTop => px(5),
-                    St::MarginBottom => px(5),
-                    St::Cursor => "pointer",
-                },
-                "[✕]",
-                ev(Ev::Click, move |_| Msg::UserToggleHelp),
-            ],
-            help_message,
-            ev(Ev::Click, |event| {
-                event.stop_propagation();
-            })
-        ],
-        ev(Ev::Click, move |_| Msg::UserToggleHelp),
-    ]
-}
+//     div![
+//         style![
+//             St::Display => if show_help { "block" } else { "none" },
+//             St::Position => "fixed",
+//             St::ZIndex => 1,
+//             St::Padding => px(5),
+//             St::PaddingTop => px(80),
+//             St::Top =>  px(0),
+//             St::Left =>  px(0),
+//             St::Right =>  px(0),
+//             St::Height => percent(100),
+//             St::BackgroundColor => "rgba(0,0,0,0.5)",
+//         ],
+//         div![
+//             style![
+//                 St::Padding => px(20),
+//                 St::Margin => "auto",
+//                 St::MaxWidth => px(900),
+//                 St::MaxHeight => "calc(100vh - 165px)",
+//                 St::OverflowY => "auto",
+//                 St::BackgroundColor => "white",
+//             ],
+//             span![
+//                 style! {
+//                     St::Float => "right",
+//                     St::MarginTop => px(5),
+//                     St::MarginBottom => px(5),
+//                     St::Cursor => "pointer",
+//                 },
+//                 "[✕]",
+//                 ev(Ev::Click, move |_| Msg::UserToggleHelp),
+//             ],
+//             help_message,
+//             ev(Ev::Click, |event| {
+//                 event.stop_propagation();
+//             })
+//         ],
+//         ev(Ev::Click, move |_| Msg::UserToggleHelp),
+//     ]
+// }
 
-fn view_blocks(
+pub fn view_blocks(
     view_cache: &ViewCache,
     state: &nakamoto_consensus::NakamotoNodeState,
     x: f32,
     y: f32,
-) -> Vec<Node<Msg>> {
+) -> Html {
     let max_depth = 5;
     let block_height = 5.;
     let block_width = 5.;
@@ -278,35 +261,41 @@ fn view_blocks(
                     }
                 }) {
                     result.push(
-                        line_![attrs! {
-                            At::X1 => x + (block_width + block_spacing) * (i as f32) + block_width / 2.,
-                            At::X2 => x + (block_width + block_spacing) * (k as f32) + block_width,
-                            At::Y1 => y + (block_height + block_spacing) * (j as f32),
-                            At::Y2 => y + (block_height + block_spacing) * (j as f32) + block_height /2.,
-                            At::Stroke => view_cache.color(nakamoto_consensus::to_number(block_map[i][j-1].unwrap())),
-                        }]
+                        html! {
+                            <line
+                                x1={ (x + (block_width + block_spacing) * (i as f32) + block_width / 2.).to_string() }
+                                x2={ (x + (block_width + block_spacing) * (k as f32) + block_width).to_string() }
+                                y1={ (y + (block_height + block_spacing) * (j as f32)).to_string() }
+                                y2={ (y + (block_height + block_spacing) * (j as f32) + block_height /2.).to_string() }
+                                stroke={ (view_cache.color(nakamoto_consensus::to_number(block_map[i][j-1].unwrap()))).to_string() }
+                            />
+                        }
                     );
                     break;
                 } else {
-                    result.push(rect![attrs! {
-                        At::X => x + (block_width + block_spacing)* (i as f32),
-                        At::Y => y + (block_height + block_spacing)* (j as f32),
-                        At::Width => block_width,
-                        At::Height => block_height,
-                        At::Fill => view_cache.color(nakamoto_consensus::to_number(block_hash))
-                    }]);
-                    result.push(line_![attrs! {
-                        At::X1 => x + (block_width + block_spacing) * (i as f32) + block_width / 2.,
-                        At::X2 => x + (block_width + block_spacing) * (i as f32) + block_width / 2.,
-                        At::Y1 => y + (block_height + block_spacing) * (j as f32) + block_height,
-                        At::Y2 => y + (block_height + block_spacing) * ((j + 1) as f32),
-                        At::Stroke => view_cache.color(nakamoto_consensus::to_number(block_hash)),
-                    }]);
+                    result.push(html! {
+                        <rect
+                            x={ (x + (block_width + block_spacing)* (i as f32)).to_string() }
+                            y={ (y + (block_height + block_spacing)* (j as f32)).to_string() }
+                            width={ (block_width).to_string() }
+                            height={ (block_height).to_string() }
+                            fill={ view_cache.color(nakamoto_consensus::to_number(block_hash)).to_string() }
+                        />
+                    });
+                    result.push(html! {
+                        <line
+                            x1={ (x + (block_width + block_spacing) * (i as f32) + block_width / 2.).to_string() }
+                            x2={ (x + (block_width + block_spacing) * (i as f32) + block_width / 2.).to_string() }
+                            y1={ (y + (block_height + block_spacing) * (j as f32) + block_height).to_string() }
+                            y2={ (y + (block_height + block_spacing) * ((j + 1) as f32)).to_string() }
+                            stroke={ (view_cache.color(nakamoto_consensus::to_number(block_hash))).to_string() }
+                        />
+                    });
                 }
             }
         }
     }
-    result
+    result.into_iter().collect()
 }
 
 fn block_map(

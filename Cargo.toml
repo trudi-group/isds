@@ -8,23 +8,21 @@ license = "MIT"
 readme = "./README.md"
 edition = "2018"
 
-[lib]
-crate-type = ["cdylib"]
-
 [dev-dependencies]
 wasm-bindgen-test = "0.3"
 
 [dependencies]
-seed = "0.8"
+yew = { git = "https://github.com/yewstack/yew/", rev = "63eb95ca4452302c63c6664f6add67293345bf33" }
 rand = "0.8"
 ordered-float = "2.0"
-hecs = "0.6"
+hecs = "0.7"
 delaunator = "0.2.1"
 dyn-clone = "1.0.4"
 palette = "0.6.0"
 hex = "0.4.3"
 rand_distr = "0.4.1"
-indoc = "1.0.3"
+gloo = "0.5"
+getrandom = { version = "0.2", features = ["js"] }
 
 [profile.release]
 lto = true

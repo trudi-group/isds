@@ -1,4 +1,9 @@
 #![allow(clippy::enum_glob_use)]
+
+#![macro_use]
+extern crate gloo;
+use gloo::console::log;
+
 pub use hecs::{Entity, World};
 pub use rand::prelude::{IteratorRandom, Rng, SliceRandom};
 pub use std::error::Error;
