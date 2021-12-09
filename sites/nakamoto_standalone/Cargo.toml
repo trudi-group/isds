@@ -1,0 +1,10 @@
+[package]
+name = "nakamoto_standalone"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+isds = { path = "../../isds/" }
+yew = { git = "https://github.com/yewstack/yew/", rev = "63eb95ca4452302c63c6664f6add67293345bf33" }

@@ -215,10 +215,6 @@ impl Component for Isds {
     fn destroy(&mut self, ctx: &Context<Self>) {}
 }
 
-fn main() {
-    yew::start_app::<Isds>();
-}
-
 #[cfg(test)]
 mod tests {
     // use super::*;

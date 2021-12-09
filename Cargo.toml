@@ -1,33 +1,10 @@
-[package]
-version = "0.2.0"
-name = "isds-bitcoin-prototype"
-authors = ["Martin Florian <martin.florian@hu-berlin.de>"]
-description = "Interactive Simulation of Distributed Systems; Prototype for Bitcoin Consensus"
-categories = ["simulation", "visualization"]
-license = "MIT"
-readme = "./README.md"
-edition = "2018"
-
-[dev-dependencies]
-wasm-bindgen-test = "0.3"
-
-[dependencies]
-yew = { git = "https://github.com/yewstack/yew/", rev = "63eb95ca4452302c63c6664f6add67293345bf33" }
-rand = "0.8"
-ordered-float = "2.0"
-hecs = "0.7"
-delaunator = "0.2.1"
-dyn-clone = "1.0.4"
-palette = "0.6.0"
-hex = "0.4.3"
-rand_distr = "0.4.1"
-gloo = "0.5"
-getrandom = { version = "0.2", features = ["js"] }
+[workspace]
+members = [
+  "isds",
+  "sites/*"
+]
 
 [profile.release]
 lto = true
 opt-level = 3
 codegen-units = 1
-
-[package.metadata.wasm-pack.profile.release]
-wasm-opt = ['-O4']
