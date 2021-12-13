@@ -7,4 +7,4 @@ edition = "2021"
 
 [dependencies]
 isds = { path = "../../isds/" }
-yew = { git = "https://github.com/yewstack/yew/", rev = "63eb95ca4452302c63c6664f6add67293345bf33" }
+yew = "0.19"

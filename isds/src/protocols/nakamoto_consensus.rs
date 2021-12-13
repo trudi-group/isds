@@ -169,19 +169,25 @@ mod tests {
 
         let state1 = sim
             .world
-            .query_one_mut::<&NakamotoNodeState>(node1)
+            .query_one::<&NakamotoNodeState>(node1)
+            .unwrap()
+            .get()
             .expect("No relevant node state stored?")
             .clone();
 
         let state2 = sim
             .world
-            .query_one_mut::<&NakamotoNodeState>(node2)
+            .query_one::<&NakamotoNodeState>(node2)
+            .unwrap()
+            .get()
             .expect("No relevant node state stored?")
             .clone();
 
         let state3 = sim
             .world
-            .query_one_mut::<&NakamotoNodeState>(node3)
+            .query_one::<&NakamotoNodeState>(node3)
+            .unwrap()
+            .get()
             .expect("No relevant node state stored?")
             .clone();
 
@@ -211,13 +217,17 @@ mod tests {
 
         let state1 = sim
             .world
-            .query_one_mut::<&NakamotoNodeState>(node1)
+            .query_one::<&NakamotoNodeState>(node1)
+            .unwrap()
+            .get()
             .expect("No relevant node state stored?")
             .clone();
 
         let state3 = sim
             .world
-            .query_one_mut::<&NakamotoNodeState>(node3)
+            .query_one::<&NakamotoNodeState>(node3)
+            .unwrap()
+            .get()
             .expect("No relevant node state stored?")
             .clone();
 
@@ -256,13 +266,17 @@ mod tests {
 
         let state1 = sim
             .world
-            .query_one_mut::<&NakamotoNodeState>(node1)
+            .query_one::<&NakamotoNodeState>(node1)
+            .unwrap()
+            .get()
             .expect("No relevant node state stored?")
             .clone();
 
         let state3 = sim
             .world
-            .query_one_mut::<&NakamotoNodeState>(node3)
+            .query_one::<&NakamotoNodeState>(node3)
+            .unwrap()
+            .get()
             .expect("No relevant node state stored?")
             .clone();
 
@@ -287,8 +301,11 @@ mod tests {
         let tested_node = sim.pick_random_node().unwrap();
         let state = sim
             .world
-            .query_one_mut::<&NakamotoNodeState>(tested_node)
-            .expect("No relevant node state stored?");
+            .query_one::<&NakamotoNodeState>(tested_node)
+            .unwrap()
+            .get()
+            .expect("No relevant node state stored?")
+            .clone();
 
         let mut remaining_blocks = state.all_blocks.clone();
 
@@ -332,13 +349,17 @@ mod tests {
 
         let state1 = sim
             .world
-            .query_one_mut::<&NakamotoNodeState>(node1)
+            .query_one::<&NakamotoNodeState>(node1)
+            .unwrap()
+            .get()
             .expect("No relevant node state stored?")
             .clone();
 
         let state2 = sim
             .world
-            .query_one_mut::<&NakamotoNodeState>(node2)
+            .query_one::<&NakamotoNodeState>(node2)
+            .unwrap()
+            .get()
             .expect("No relevant node state stored?")
             .clone();
 

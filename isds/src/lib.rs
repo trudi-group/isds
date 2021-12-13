@@ -5,44 +5,67 @@ extern crate gloo;
 use gloo::console::log;
 use gloo::render::{request_animation_frame, AnimationFrame};
 
+pub use yew;
 use yew::prelude::*;
+
+use std::rc::Rc;
+use std::cell::RefCell;
+
+mod components;
+pub use components::*;
 
 mod protocols;
 mod sim;
-mod view;
-mod view_helpers;
 use protocols::*;
 use sim::*;
-use view::*;
-use view_helpers::{FPSCounter, ViewCache};
 
 // Describes the state.
-pub struct Isds {
-    pub sim: Simulation,
-    pub view_cache: ViewCache,
-    pub fps: FPSCounter,
+pub struct Isds { // TODO call me "isds::main" maybe?
+    pub sim: Rc<RefCell<Simulation>>,
     pub show_help: bool,
     pub show_debug_infos: bool,
     last_render: RealSeconds,
     _render_loop_handle: Option<AnimationFrame>,
 }
 
+#[derive(Clone)]
+pub struct ContextData {
+    pub sim: Rc<RefCell<Simulation>>,
+    pub last_render: RealSeconds,
+}
+impl PartialEq for ContextData {
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.sim, &other.sim) && self.last_render == other.last_render
+    }
+}
+impl std::fmt::Debug for ContextData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("State").field("sim", &"hidden").field("last_render", &self.last_render).finish()
+    }
+}
+
 // Describes the different events you can modify state with.
 #[derive(Debug, Clone)]
 pub enum Msg {
     Rendered(RealSeconds),
-    UserPausePlay,
-    UserMakeFaster,
-    UserMakeSlower,
-    UserToggleHelp,
-    NodeClick(Entity),
-    LinkClick(Entity, Entity),
-    KeyDown(KeyboardEvent),
+    // UserPausePlay,
+    // UserMakeFaster,
+    // UserMakeSlower,
+    // UserToggleHelp,
+    // NodeClick(Entity),
+    // LinkClick(Entity, Entity),
+    // KeyDown(KeyboardEvent),
+}
+
+#[derive(Properties, PartialEq)]
+pub struct Props {
+    #[prop_or_default]
+    pub children: Children,
 }
 
 impl Component for Isds {
     type Message = Msg;
-    type Properties = (); // TODO
+    type Properties = Props;
 
     fn create(ctx: &Context<Self>) -> Self {
         let mut sim = Simulation::new();
@@ -52,21 +75,18 @@ impl Component for Isds {
             nakamoto_consensus::NakamotoConsensus::default(),
         ));
         sim.do_now(StartAutomaticRandomNodePokes(2.));
-        let view_cache = ViewCache::default();
 
         sim.do_now(SpawnRandomNodes(32));
         sim.do_now(MakeDelaunayNetwork);
         // sim.do_now(PokeMultipleRandomNodes(1));
 
-        // sim.catch_up_with_watchers(
+        sim.catch_up(
         //     &mut [&mut view_cache],
-        //     100.,
-        // );
+            100.,
+        );
 
         Self {
-            sim,
-            view_cache,
-            fps: FPSCounter::default(),
+            sim: Rc::new(RefCell::new(sim)),
             show_help: true,
             show_debug_infos: true,
             last_render: 0.,
@@ -75,29 +95,15 @@ impl Component for Isds {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let buffer_space = 50.;
         html!{
             <>
-                { self.view_menu_bar(ctx) }
-                <svg
-                   viewBox={ format!("{} {} {} {}",
-                       -buffer_space,
-                       -buffer_space,
-                       self.sim.underlay_width() + 2. * buffer_space,
-                       self.sim.underlay_height() + 2. * buffer_space
-                    ) }
-                    style=r#"border-style: "solid"; max-width: 1024px"#
-                >
-                    if self.show_debug_infos {
-                        { view_palette(&self.view_cache) }
-                    }
-                    { view_edges(&self.view_cache, ctx) }
-                    { view_nodes(&self.sim.world, &self.view_cache, ctx) }
-                    { view_messages(&self.sim.world, &self.view_cache, self.sim.time.now()) }
-                </svg>
-                if self.show_debug_infos {
-                    { view_log(self.sim.logger.entries()) }
-                }
+                // { self.view_menu_bar(ctx) }
+                < ContextProvider<ContextData> context={ ContextData { sim: self.sim.clone(), last_render: self.last_render }}>
+                    { for ctx.props().children.iter() }
+                </ ContextProvider<ContextData>>
+                // if self.show_debug_infos {
+                //     { view_log(self.sim.logger.entries()) }
+                // }
                 // { view_help(self.show_help) }
             </>
         }
@@ -105,91 +111,53 @@ impl Component for Isds {
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            Msg::Rendered(render_timestamp) => {
-                let elapsed_browser_seconds = render_timestamp - self.last_render;
-                self.last_render = render_timestamp;
-
-                self.fps.register_render_interval(elapsed_browser_seconds);
-                self
-                    .sim
-                    .catch_up_with_watchers(&mut [&mut self.view_cache], elapsed_browser_seconds);
+            Msg::Rendered(time) => {
+                let elapsed_browser_seconds = time - self.last_render;
+                self.sim.borrow_mut().catch_up(elapsed_browser_seconds);
+                self.last_render = time;
+                true
             }
-            Msg::UserPausePlay => {
-                self.sim.time.toggle_paused();
-            }
-            Msg::UserMakeFaster => {
-                self
-                    .sim
-                    .time
-                    .set_speed((self.sim.time.speed() * 10f64).min(1000f64));
-            }
-            Msg::UserMakeSlower => {
-                self.sim.time.set_speed(self.sim.time.speed() / 10f64);
-            }
-            Msg::UserToggleHelp => {
-                self.show_help = !self.show_help;
-            }
-            Msg::NodeClick(node) => {
-                log!(format!("Click on {}", self.sim.name(node)));
-                self.sim.do_now(PokeNode(node));
-                // self
-                //     .sim
-                //     .do_now(protocols::simple_flooding::StartSimpleFlooding(
-                //         node,
-                //         rand::random::<u32>(),
-                //     ));
-            }
-            Msg::LinkClick(node1, node2) => {
-                log!(format!(
-                    "Click on link between {} and {}.",
-                    self.sim.name(node1),
-                    self.sim.name(node2)
-                ));
-                if self
-                    .view_cache
-                    .edge_type(node1, node2)
-                    .unwrap()
-                    .is_phantom()
-                {
-                    self.sim.do_now(AddPeer(node1, node2));
-                    self.sim.do_now(AddPeer(node2, node1));
-                } else {
-                    self.sim.do_now(RemovePeer(node1, node2));
-                    self.sim.do_now(RemovePeer(node2, node1));
-                }
-            }
-            Msg::KeyDown(keyboard_event) => match keyboard_event.key().as_str() {
-                " " => {
-                    ctx.link().send_message(Msg::UserPausePlay);
-                }
-                "ArrowLeft" | "h" => {
-                    ctx.link().send_message(Msg::UserMakeSlower);
-                }
-                "ArrowRight" | "l" => {
-                    ctx.link().send_message(Msg::UserMakeFaster);
-                }
-                "m" => {
-                    self.sim.do_now(PokeRandomNode);
-                }
-                "?" => {
-                    ctx.link().send_message(Msg::UserToggleHelp);
-                }
-                "d" => {
-                    self.show_debug_infos = !self.show_debug_infos;
-                }
-                "Escape" => {
-                    self.show_help = false;
-                }
-                key => {
-                    log!("Unmapped key pressed: {:?}", key);
-                }
-            },
+            // Msg::UserPausePlay => {
+            //     self.sim.borrow_mut().time.toggle_paused();
+            // }
+            // Msg::UserMakeFaster => {
+            //     let new_speed = (self.sim.borrow().time.speed() * 10f64).min(1000f64);
+            //     self.sim.borrow_mut().time.set_speed(new_speed);
+            // }
+            // Msg::UserMakeSlower => {
+            //     let new_speed = self.sim.borrow().time.speed() / 10f64;
+            //     self.sim.borrow_mut().time.set_speed(new_speed);
+            // }
+            // Msg::UserToggleHelp => {
+            //     self.show_help = !self.show_help;
+            // }
+            // Msg::KeyDown(keyboard_event) => match keyboard_event.key().as_str() {
+            //     " " => {
+            //         ctx.link().send_message(Msg::UserPausePlay);
+            //     }
+            //     "ArrowLeft" | "h" => {
+            //         ctx.link().send_message(Msg::UserMakeSlower);
+            //     }
+            //     "ArrowRight" | "l" => {
+            //         ctx.link().send_message(Msg::UserMakeFaster);
+            //     }
+            //     "m" => {
+            //         self.sim.borrow_mut().do_now(PokeRandomNode);
+            //     }
+            //     "?" => {
+            //         ctx.link().send_message(Msg::UserToggleHelp);
+            //     }
+            //     "d" => {
+            //         self.show_debug_infos = !self.show_debug_infos;
+            //     }
+            //     "Escape" => {
+            //         self.show_help = false;
+            //     }
+            //     key => {
+            //         log!("Unmapped key pressed: {:?}", key);
+            //     }
+            // },
         }
-        true // FIXME
-    }
-
-    fn changed(&mut self, ctx: &Context<Self>) -> bool {
-        true
     }
 
     fn rendered(&mut self, ctx: &Context<Self>, first_render: bool) {
@@ -211,8 +179,6 @@ impl Component for Isds {
         // occur.
         self._render_loop_handle = Some(handle);
     }
-
-    fn destroy(&mut self, ctx: &Context<Self>) {}
 }
 
 #[cfg(test)]

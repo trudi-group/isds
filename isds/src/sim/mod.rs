@@ -51,11 +51,20 @@ pub enum NodeEvent {
     Poke,
 }
 
+#[readonly::make]
 pub struct Simulation {
-    pub world: World,
+
     pub time: Time,
+
+    #[readonly]
+    pub world: World,
+
+    #[readonly]
     pub rng: ThreadRng,
+
+    #[readonly]
     pub logger: Logger,
+
     additional_event_handlers: Vec<Box<dyn EventHandler>>,
     event_queue: EventQueue,
     underlay_config: UnderlayConfig,
@@ -94,7 +103,7 @@ impl Simulation {
     ) {
         self.work_until(event_watchers, self.time.after(elapsed_real_time))
     }
-    fn work_until(&mut self, event_watchers: &mut [&mut dyn EventWatcher], sim_time: SimSeconds) {
+    pub fn work_until(&mut self, event_watchers: &mut [&mut dyn EventWatcher], sim_time: SimSeconds) {
         while self
             .event_queue
             .peek()

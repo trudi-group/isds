@@ -164,7 +164,7 @@ mod tests {
 
         let received_values: Vec<HashSet<u32>> = sim
             .world
-            .query_mut::<&SimpleFloodingState<u32>>()
+            .query::<&SimpleFloodingState<u32>>()
             .into_iter()
             .map(|(_, s)| s.own_haves.clone())
             .collect();
@@ -196,7 +196,9 @@ mod tests {
 
         assert!(sim
             .world
-            .query_one_mut::<&SimpleFloodingState<u32>>(node2)
+            .query_one::<&SimpleFloodingState<u32>>(node2)
+            .unwrap()
+            .get()
             .unwrap()
             .own_haves
             .contains(&flooded_value));

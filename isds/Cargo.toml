@@ -12,7 +12,7 @@ edition = "2018"
 wasm-bindgen-test = "0.3"
 
 [dependencies]
-yew = { git = "https://github.com/yewstack/yew/", rev = "63eb95ca4452302c63c6664f6add67293345bf33" }
+yew = "0.19"
 rand = "0.8"
 ordered-float = "2.0"
 hecs = "0.7"
@@ -23,6 +23,7 @@ hex = "0.4.3"
 rand_distr = "0.4.1"
 gloo = "0.5"
 getrandom = { version = "0.2", features = ["js"] }
+readonly = "0.2.0"
 
 [profile.release]
 lto = true
