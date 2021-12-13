@@ -14,7 +14,6 @@ use std::mem;
 
 mod command;
 mod despawner;
-mod event_handlers;
 mod event_queue;
 mod logger;
 mod peers;
@@ -26,7 +25,6 @@ mod underlay;
 use despawner::Despawner;
 
 pub use command::Command;
-pub use event_handlers::{EventHandler, EventWatcher};
 pub use event_queue::EventQueue;
 pub use logger::Logger;
 pub use protocol::{InvokeProtocolForAllNodes, NodeInterface, Payload, Protocol};
@@ -49,6 +47,10 @@ pub enum NodeEvent {
     TimerFired(Entity),
     PeerSetChanged(PeerSetUpdate),
     Poke,
+}
+
+pub trait EventHandler {
+    fn handle_event(&mut self, sim: &mut Simulation, event: Event) -> Result<(), Box<dyn Error>>;
 }
 
 #[readonly::make]
@@ -94,16 +96,9 @@ impl Simulation {
         self.event_queue.push(time_due, event);
     }
     pub fn catch_up(&mut self, elapsed_real_time: RealSeconds) {
-        self.catch_up_with_watchers(&mut [], elapsed_real_time)
+        self.work_until(self.time.after(elapsed_real_time))
     }
-    pub fn catch_up_with_watchers(
-        &mut self,
-        event_watchers: &mut [&mut dyn EventWatcher],
-        elapsed_real_time: RealSeconds,
-    ) {
-        self.work_until(event_watchers, self.time.after(elapsed_real_time))
-    }
-    pub fn work_until(&mut self, event_watchers: &mut [&mut dyn EventWatcher], sim_time: SimSeconds) {
+    pub fn work_until(&mut self, sim_time: SimSeconds) {
         while self
             .event_queue
             .peek()
@@ -112,7 +107,7 @@ impl Simulation {
         {
             let (time_due, event) = self.event_queue.pop().unwrap();
             self.time.advance_sim_time_to(time_due);
-            if let Err(e) = self.handle_event(event_watchers, event) {
+            if let Err(e) = self.handle_event(event) {
                 self.log(format!("Error handling event: {}", e));
             }
         }
@@ -120,7 +115,6 @@ impl Simulation {
     }
     fn handle_event(
         &mut self,
-        event_watchers: &mut [&mut dyn EventWatcher],
         event: Event,
     ) -> Result<(), Box<dyn Error>> {
         command::Handler.handle_event(self, event)?;
@@ -136,9 +130,6 @@ impl Simulation {
         );
         debug_assert!(new_handlers.is_empty());
 
-        for handler in event_watchers.iter_mut() {
-            handler.handle_event(self, event)?;
-        }
         Despawner.handle_event(self, event)?;
         Ok(())
     }

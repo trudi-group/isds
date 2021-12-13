@@ -41,7 +41,7 @@ impl Component for NetView {
         let target_palette_n = 64;
 
         let colors = PseudorandomColors::new(seed_palette, target_palette_n);
-        let edges = EdgeMap::default();
+        let edges = EdgeMap::new(&sim.borrow().world, sim.borrow().time.now());
 
         Self { sim, colors, edges, _context_handle }
     }
@@ -69,11 +69,9 @@ impl Component for NetView {
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            Msg::Rendered(time) => {
-                if time < 10. { // FIXME
-                    self.rebuild_edges();
-                }
-                true
+            Msg::Rendered(_) => {
+                self.rebuild_edges_if_changed();
+                true // always redraw, because messages (TODO?)
             }
             Msg::NodeClick(node) => {
                 log!(format!("Click on {}", self.sim.borrow().name(node)));
@@ -104,7 +102,6 @@ impl Component for NetView {
                     self.sim.borrow_mut().do_now(RemovePeer(node1, node2));
                     self.sim.borrow_mut().do_now(RemovePeer(node2, node1));
                 }
-                self.rebuild_edges(); // FIXME
                 false
             }
         }
@@ -112,8 +109,9 @@ impl Component for NetView {
 }
 
 impl NetView {
-    fn rebuild_edges(&mut self) {
-        self.edges.rebuild(&self.sim.borrow().world) // FIXME
+    fn rebuild_edges_if_changed(&mut self) -> bool {
+        let now = self.sim.borrow().time.now();
+        self.edges.rebuild_if_changed(&self.sim.borrow().world, now)
     }
     fn view_nodes(&self, ctx: &Context<NetView>) -> Html {
         let r = 5.0;
@@ -138,7 +136,7 @@ impl NetView {
         let link = ctx.link();
         self
             .edges
-            .0
+            .edges
             .iter()
             .map(|(&edge_endpoints, &(edge_type, line))| html! {
                 <g
@@ -298,10 +296,29 @@ fn message_position(
 }
 
 #[derive(Debug, Default)]
-struct EdgeMap(BTreeMap<EdgeEndpoints, (EdgeType, UnderlayLine)>);
+struct EdgeMap {
+    edges: BTreeMap<EdgeEndpoints, (EdgeType, UnderlayLine)>,
+    last_update: SimSeconds,
+}
 impl EdgeMap {
-    fn rebuild(&mut self, world: &World) {
-        let edges = &mut self.0;
+    fn new(world: &World, simtime_now: SimSeconds) -> Self {
+        let mut new: Self = Default::default();
+        new.rebuild(world, simtime_now);
+        new
+    }
+
+    fn rebuild_if_changed(&mut self, world: &World, simtime_now: SimSeconds) -> bool {
+        let needs_update = world.query::<&PeerSet>().iter().any(|(_, peer_set)| peer_set.last_update() > self.last_update);
+        if needs_update {
+            self.rebuild(world, simtime_now);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn rebuild(&mut self, world: &World, simtime_now: SimSeconds) {
+        let edges = &mut self.edges;
 
         for (edge_type, _) in edges.values_mut() {
             *edge_type = EdgeType::Phantom;
@@ -310,7 +327,7 @@ impl EdgeMap {
         log!("Rebuilding edges...");
 
         for (node, peer_set) in world.query::<&PeerSet>().iter() {
-            for &peer in peer_set.0.iter() {
+            for &peer in peer_set.iter() {
                 let endpoints = EdgeEndpoints::new(node, peer);
                 match edges.entry(endpoints) {
                     Entry::Occupied(mut e) => {
@@ -337,9 +354,10 @@ impl EdgeMap {
                 }
             }
         }
+        self.last_update = simtime_now;
     }
     fn edge_type(&self, endpoint1: Entity, endpoint2: Entity) -> Option<EdgeType> {
-        self.0
+        self.edges
             .get(&EdgeEndpoints::new(endpoint1, endpoint2))
             .map(|e| e.0)
     }
@@ -464,36 +482,36 @@ mod tests {
     wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
 
     #[wasm_bindgen_test]
-    fn rebuild_edges_builds_edges() {
+    fn rebuild_builds_edges() {
         let mut world = World::default();
         let mut edges = EdgeMap::default();
         let node1 = world.spawn((PeerSet::default(), UnderlayPosition::new(23., 42.)));
         let node2 = world.spawn((
-            PeerSet(vec![node1].into_iter().collect()),
+            PeerSet::default_from(vec![node1]),
             UnderlayPosition::new(13., 13.),
         ));
 
-        edges.rebuild(&world);
+        edges.rebuild(&world, Default::default());
 
-        assert!(edges.0.contains_key(&EdgeEndpoints::new(node1, node2)));
+        assert!(edges.edges.contains_key(&EdgeEndpoints::new(node1, node2)));
     }
 
     #[wasm_bindgen_test]
-    fn rebuild_edges_sets_direction() {
+    fn rebuild_sets_direction() {
         let mut world = World::default();
         let mut edges = EdgeMap::default();
         let node1 = world.spawn((PeerSet::default(), UnderlayPosition::new(23., 42.)));
         let node2 = world.spawn((
-            PeerSet(vec![node1].into_iter().collect()),
+            PeerSet::default_from(vec![node1]),
             UnderlayPosition::new(13., 13.),
         ));
 
-        edges.rebuild(&world);
+        edges.rebuild(&world, Default::default());
 
         assert_ne!(
             EdgeType::Undirected,
             edges
-                .0
+                .edges
                 .get(&EdgeEndpoints::new(node1, node2))
                 .unwrap()
                 .0
@@ -501,29 +519,28 @@ mod tests {
     }
 
     #[wasm_bindgen_test]
-    fn rebuild_edges_stores_removed_edges_as_phantom_edges() {
+    fn rebuild_stores_removed_edges_as_phantom_edges() {
         let mut world = World::default();
         let mut edges = EdgeMap::default();
         let node1 = world.spawn((PeerSet::default(), UnderlayPosition::new(23., 42.)));
         let node2 = world.spawn((
-            PeerSet(vec![node1].into_iter().collect()),
+            PeerSet::default_from(vec![node1]),
             UnderlayPosition::new(13., 13.),
         ));
 
-        edges.rebuild(&world);
+        edges.rebuild(&world, Default::default());
 
         world
             .query_one_mut::<&mut PeerSet>(node2)
             .unwrap()
-            .0
-            .remove(&node1);
+            .remove(&node1, Default::default());
 
-        edges.rebuild(&world);
+        edges.rebuild(&world, Default::default());
 
         assert_eq!(
             EdgeType::Phantom,
             edges
-                .0
+                .edges
                 .get(&EdgeEndpoints::new(node1, node2))
                 .unwrap()
                 .0,

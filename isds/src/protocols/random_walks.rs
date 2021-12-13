@@ -40,7 +40,7 @@ pub fn random_step(node: &mut NodeInterface, current_ttl: usize) -> Result<Entit
 }
 
 fn random_peer(node: &mut NodeInterface) -> Option<Entity> {
-    let peers = node.get::<PeerSet>().0.clone(); // TODO: the `.clone()` here is not ideal
+    let peers = node.get::<PeerSet>().clone(); // TODO: the `.clone()` here is not ideal
     peers.iter().choose(node.rng()).copied()
 }
 

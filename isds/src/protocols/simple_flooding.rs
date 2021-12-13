@@ -74,7 +74,7 @@ pub struct SimpleFloodingState<T> {
 
 impl<T: Payload + Default + Hash + Eq> SimpleFlooding<T> {
     pub fn flood(node: &mut NodeInterface, message: T) {
-        let peers = node.get::<PeerSet>().0.clone(); // TODO: again, the clone here is not ideal
+        let peers = node.get::<PeerSet>().clone(); // TODO: again, the clone here is not ideal
         let flooding_state = node.get::<SimpleFloodingState<T>>();
 
         let mut next_hops = vec![];

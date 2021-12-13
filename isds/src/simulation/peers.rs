@@ -37,10 +37,50 @@ impl Command for MakeDelaunayNetwork {
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct PeerSet(pub BTreeSet<Entity>);
+pub struct PeerSet {
+    peers: BTreeSet<Entity>,
+    last_update: SimSeconds, // for helping the UI know when to redraw
+}
 impl PeerSet {
-    pub fn new() -> Self {
-        Self(BTreeSet::new())
+    /// Only useful for tests really.
+    pub fn default_from(peers: impl IntoIterator<Item=Entity>) -> Self {
+        Self { peers: peers.into_iter().collect(), last_update: Default::default() }
+    }
+    pub fn iter(&self) -> std::collections::btree_set::Iter<Entity>{
+        self.peers.iter()
+    }
+    pub fn insert(&mut self, peer: Entity, now: SimSeconds) -> bool {
+        if self.peers.insert(peer) {
+            self.last_update = now;
+            true
+        } else {
+            false
+        }
+    }
+    pub fn remove(&mut self, peer: &Entity, now: SimSeconds) -> bool {
+        if self.peers.remove(peer) {
+            self.last_update = now;
+            true
+        } else {
+            false
+        }
+    }
+    pub fn contains(&self, peer: &Entity) -> bool {
+        self.peers.contains(peer)
+    }
+    pub fn len(&self) -> usize {
+        self.peers.len()
+    }
+    pub fn last_update(&self) -> SimSeconds {
+        self.last_update
+    }
+}
+impl IntoIterator for PeerSet {
+    type Item = Entity;
+    type IntoIter = std::collections::btree_set::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.peers.into_iter()
     }
 }
 
@@ -61,7 +101,7 @@ fn make_delaunay_network(sim: &mut Simulation) {
         })
         .unzip();
     for &node in nodes.iter() {
-        *peers(sim, node) = PeerSet::new();
+        *peers(sim, node) = PeerSet::default();
     }
     let triangles = triangulate(&points)
         .expect("No triangulation exists.")
@@ -88,7 +128,7 @@ pub fn add_random_nodes_as_peers(
 ) {
     let mut candidates = sim.all_other_nodes(node);
     let peers = peers(sim, node).clone();
-    candidates.retain(|id| !peers.0.contains(id));
+    candidates.retain(|id| !peers.contains(id));
 
     let new_peers_min = cmp::min(new_peers_min, candidates.len());
     let new_peers_max = cmp::min(new_peers_max, candidates.len());
@@ -101,7 +141,8 @@ pub fn add_random_nodes_as_peers(
 }
 
 pub fn add_peer(sim: &mut Simulation, node: Entity, peer: Entity) {
-    peers(sim, node).0.insert(peer);
+    let now = sim.time.now();
+    peers(sim, node).insert(peer, now);
     sim.schedule_now(Event::Node(
         node,
         NodeEvent::PeerSetChanged(PeerSetUpdate::PeerAdded(peer)),
@@ -109,7 +150,8 @@ pub fn add_peer(sim: &mut Simulation, node: Entity, peer: Entity) {
 }
 
 pub fn remove_peer(sim: &mut Simulation, node: Entity, peer: Entity) {
-    peers(sim, node).0.remove(&peer);
+    let now = sim.time.now();
+    peers(sim, node).remove(&peer, now);
     sim.schedule_now(Event::Node(
         node,
         NodeEvent::PeerSetChanged(PeerSetUpdate::PeerRemoved(peer)),
@@ -118,7 +160,7 @@ pub fn remove_peer(sim: &mut Simulation, node: Entity, peer: Entity) {
 
 pub fn peers(sim: &mut Simulation, node: Entity) -> hecs::RefMut<PeerSet> {
     if sim.world.get_mut::<PeerSet>(node).is_err() {
-        let peers = PeerSet::new();
+        let peers = PeerSet::default();
         sim.world.insert_one(node, peers).unwrap();
     }
     sim.world.get_mut::<PeerSet>(node).unwrap()
@@ -138,7 +180,7 @@ mod tests {
         let node2 = sim.spawn_random_node();
         add_peer(&mut sim, node1, node2);
 
-        let expected = PeerSet(vec![node2].into_iter().collect());
+        let expected = PeerSet { peers: vec![node2].into_iter().collect(), last_update: Default::default() };
         let actual = (*sim.world.get::<PeerSet>(node1).unwrap()).clone();
 
         assert_eq!(expected, actual);
@@ -156,12 +198,12 @@ mod tests {
         add_random_nodes_as_peers(&mut sim, node1, 2, 3);
 
         let peers = peers(&mut sim, node1);
-        let actual = peers.0.len();
+        let actual = peers.len();
         let expected_min = 2;
         let expected_max = 3;
 
         assert!(expected_min <= actual);
         assert!(actual <= expected_max);
-        assert!(!peers.0.contains(&node1));
+        assert!(!peers.contains(&node1));
     }
 }
