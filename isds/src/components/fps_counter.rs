@@ -5,7 +5,7 @@ pub struct FpsCounter {
     fps_sample: f64,
     last_render_at: RealSeconds,
     last_sample_at: RealSeconds,
-    _context_handle: yew::context::ContextHandle<ContextData>,
+    _context_handle: yew::context::ContextHandle<IsdsContext>,
 }
 impl FpsCounter {
     fn register_render(&mut self, render_at: RealSeconds) -> bool {
@@ -33,7 +33,7 @@ impl Component for FpsCounter {
     type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
-        let (context_data, _context_handle) = get_context_data!(ctx, Self);
+        let (_, _context_handle) = get_context_data!(ctx, Self);
         Self {
             fps_sample: 0.,
             last_render_at: 0.,
@@ -42,15 +42,15 @@ impl Component for FpsCounter {
         }
     }
 
-    fn view(&self, ctx: &Context<Self>) -> Html {
-        html! { self.fps_sample }
+    fn view(&self, _: &Context<Self>) -> Html {
+        html! { format!("{:.0}", self.fps_sample) }
     }
 
-    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, _: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            Msg::Rendered(time) => {
-                self.register_render(time)
-            }
+            Msg::Rendered(time) => self.register_render(time),
         }
     }
 }
+
+// TODO: tests?

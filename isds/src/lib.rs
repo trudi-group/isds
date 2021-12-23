@@ -1,5 +1,4 @@
 #![allow(clippy::wildcard_imports)]
-
 #![macro_use]
 extern crate gloo;
 use gloo::console::log;
@@ -8,38 +7,40 @@ use gloo::render::{request_animation_frame, AnimationFrame};
 pub use yew;
 use yew::prelude::*;
 
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::rc::Rc;
 
 mod components;
 pub use components::*;
 
 mod protocols;
-use protocols::*;
+pub use protocols::*;
 
 mod simulation;
-use simulation::*;
+pub use simulation::*;
 
-// Describes the state.
-pub struct Isds { // TODO call me "isds::main" maybe?
+pub struct Isds {
     pub sim: Rc<RefCell<Simulation>>,
     last_render: RealSeconds,
     _render_loop_handle: Option<AnimationFrame>,
 }
 
 #[derive(Clone)]
-pub struct ContextData {
+pub struct IsdsContext {
     pub sim: Rc<RefCell<Simulation>>,
     pub last_render: RealSeconds,
 }
-impl PartialEq for ContextData {
+impl PartialEq for IsdsContext {
     fn eq(&self, other: &Self) -> bool {
         Rc::ptr_eq(&self.sim, &other.sim) && self.last_render == other.last_render
     }
 }
-impl std::fmt::Debug for ContextData {
+impl std::fmt::Debug for IsdsContext {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("State").field("sim", &"hidden").field("last_render", &self.last_render).finish()
+        f.debug_struct("State")
+            .field("sim", &"hidden")
+            .field("last_render", &self.last_render)
+            .finish()
     }
 }
 
@@ -48,10 +49,17 @@ pub enum Msg {
     Rendered(RealSeconds),
 }
 
-#[derive(Properties, PartialEq)]
+#[derive(Properties)]
 pub struct Props {
     #[prop_or_default]
     pub children: Children,
+    #[prop_or_default]
+    pub sim: Rc<RefCell<Simulation>>,
+}
+impl PartialEq for Props {
+    fn eq(&self, other: &Self) -> bool {
+        self.children == other.children && Rc::ptr_eq(&self.sim, &other.sim)
+    }
 }
 
 impl Component for Isds {
@@ -59,35 +67,24 @@ impl Component for Isds {
     type Properties = Props;
 
     fn create(ctx: &Context<Self>) -> Self {
-        let mut sim = Simulation::new();
-        sim.add_event_handler(InvokeProtocolForAllNodes(
-            // simple_flooding::SimpleFlooding::<u32>::default(),
-            // random_walks::RandomWalks::new(1024),
-            nakamoto_consensus::NakamotoConsensus::default(),
-        ));
-        sim.do_now(StartAutomaticRandomNodePokes(2.));
+        let sim = ctx.props().sim.clone();
 
-        sim.do_now(SpawnRandomNodes(32));
-        sim.do_now(MakeDelaunayNetwork);
-        // sim.do_now(PokeMultipleRandomNodes(1));
-
-        sim.catch_up(
-        //     &mut [&mut view_cache],
-            100.,
-        );
+        // We do this to make sure that any `do_now` things are done before the children ISDS
+        // components get initialized.
+        sim.borrow_mut().catch_up(0.);
 
         Self {
-            sim: Rc::new(RefCell::new(sim)),
+            sim,
             last_render: 0.,
             _render_loop_handle: None,
         }
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        html!{
-            < ContextProvider<ContextData> context={ ContextData { sim: self.sim.clone(), last_render: self.last_render }}>
+        html! {
+            < ContextProvider<IsdsContext> context={ IsdsContext { sim: self.sim.clone(), last_render: self.last_render }}>
                 { for ctx.props().children.iter() }
-            </ ContextProvider<ContextData>>
+            </ ContextProvider<IsdsContext>>
         }
     }
 
@@ -103,7 +100,6 @@ impl Component for Isds {
     }
 
     fn rendered(&mut self, ctx: &Context<Self>, _first_render: bool) {
-
         // if first_render { // TODO ? or rather something for a UI component ?
         //     let window = gloo::utils::window();
         //     window.add_event_listener_with_callback(

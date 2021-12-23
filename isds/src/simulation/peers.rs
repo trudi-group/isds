@@ -43,10 +43,13 @@ pub struct PeerSet {
 }
 impl PeerSet {
     /// Only useful for tests really.
-    pub fn default_from(peers: impl IntoIterator<Item=Entity>) -> Self {
-        Self { peers: peers.into_iter().collect(), last_update: Default::default() }
+    pub fn default_from(peers: impl IntoIterator<Item = Entity>) -> Self {
+        Self {
+            peers: peers.into_iter().collect(),
+            last_update: Default::default(),
+        }
     }
-    pub fn iter(&self) -> std::collections::btree_set::Iter<Entity>{
+    pub fn iter(&self) -> std::collections::btree_set::Iter<Entity> {
         self.peers.iter()
     }
     pub fn insert(&mut self, peer: Entity, now: SimSeconds) -> bool {
@@ -180,7 +183,10 @@ mod tests {
         let node2 = sim.spawn_random_node();
         add_peer(&mut sim, node1, node2);
 
-        let expected = PeerSet { peers: vec![node2].into_iter().collect(), last_update: Default::default() };
+        let expected = PeerSet {
+            peers: vec![node2].into_iter().collect(),
+            last_update: Default::default(),
+        };
         let actual = (*sim.world.get::<PeerSet>(node1).unwrap()).clone();
 
         assert_eq!(expected, actual);

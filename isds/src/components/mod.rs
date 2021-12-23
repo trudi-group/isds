@@ -2,9 +2,11 @@ use super::*;
 
 macro_rules! get_context_data {
     ($ctx:expr, $Self:ty) => {{
-        $ctx
-            .link()
-            .context::<ContextData>($ctx.link().callback(|data: ContextData| <$Self>::Message::Rendered(data.last_render)))
+        $ctx.link()
+            .context::<IsdsContext>(
+                $ctx.link()
+                    .callback(|data: IsdsContext| <$Self>::Message::Rendered(data.last_render)),
+            )
             .expect("isds context data")
     }};
 }

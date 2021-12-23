@@ -1,5 +1,4 @@
 #![allow(clippy::enum_glob_use)]
-
 #![macro_use]
 extern crate gloo;
 use gloo::console::log;
@@ -55,7 +54,6 @@ pub trait EventHandler {
 
 #[readonly::make]
 pub struct Simulation {
-
     pub time: Time,
 
     #[readonly]
@@ -113,10 +111,7 @@ impl Simulation {
         }
         self.time.advance_sim_time_to(sim_time);
     }
-    fn handle_event(
-        &mut self,
-        event: Event,
-    ) -> Result<(), Box<dyn Error>> {
+    fn handle_event(&mut self, event: Event) -> Result<(), Box<dyn Error>> {
         command::Handler.handle_event(self, event)?;
 
         // TODO clean this up by splitting `Simulation` into something like `Logic` and `State`

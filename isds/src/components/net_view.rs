@@ -3,12 +3,11 @@ use super::*;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 
-
 pub struct NetView {
     sim: Rc<RefCell<Simulation>>,
     colors: PseudorandomColors,
     edges: EdgeMap,
-    _context_handle: yew::context::ContextHandle<ContextData>
+    _context_handle: yew::context::ContextHandle<IsdsContext>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -27,7 +26,7 @@ impl Component for NetView {
 
         let sim = context_data.sim;
 
-        // TODO as props?
+        // TODO as props!
         let seed_palette = &[
             // WI colors
             "#A69D82", // greige
@@ -43,13 +42,17 @@ impl Component for NetView {
         let colors = PseudorandomColors::new(seed_palette, target_palette_n);
         let edges = EdgeMap::new(&sim.borrow().world, sim.borrow().time.now());
 
-        Self { sim, colors, edges, _context_handle }
+        Self {
+            sim,
+            colors,
+            edges,
+            _context_handle,
+        }
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-
         let buffer_space = 50.;
-        html!{
+        html! {
             <svg
                viewBox={ format!("{} {} {} {}",
                    -buffer_space,
@@ -67,35 +70,26 @@ impl Component for NetView {
         }
     }
 
-    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, _: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::Rendered(_) => {
                 self.rebuild_edges_if_changed();
                 true // always redraw, because messages (TODO?)
             }
             Msg::NodeClick(node) => {
+                // TODO perhaps configure node click action using a property?
                 log!(format!("Click on {}", self.sim.borrow().name(node)));
                 self.sim.borrow_mut().do_now(PokeNode(node));
-                // self
-                //     .sim
-                //     .do_now(protocols::simple_flooding::StartSimpleFlooding(
-                //         node,
-                //         rand::random::<u32>(),
-                //     ));
                 false
             }
             Msg::LinkClick(node1, node2) => {
+                // TODO perhaps configure link click action using a property?
                 log!(format!(
                     "Click on link between {} and {}.",
                     self.sim.borrow().name(node1),
                     self.sim.borrow().name(node2)
                 ));
-                if self
-                    .edges
-                    .edge_type(node1, node2)
-                    .unwrap()
-                    .is_phantom()
-                {
+                if self.edges.edge_type(node1, node2).unwrap().is_phantom() {
                     self.sim.borrow_mut().do_now(AddPeer(node1, node2));
                     self.sim.borrow_mut().do_now(AddPeer(node2, node1));
                 } else {
@@ -111,71 +105,76 @@ impl Component for NetView {
 impl NetView {
     fn rebuild_edges_if_changed(&mut self) -> bool {
         let now = self.sim.borrow().time.now();
-        self.edges.rebuild_if_changed(&self.sim.borrow().world, now)
+        self.edges.rebuild_if_needed(&self.sim.borrow().world, now)
     }
     fn view_nodes(&self, ctx: &Context<NetView>) -> Html {
         let r = 5.0;
         let link = ctx.link();
-        self.sim.borrow().world
+        self.sim
+            .borrow()
+            .world
             .query::<(&UnderlayPosition, &nakamoto_consensus::NakamotoNodeState)>()
             .into_iter()
-            .map(|(node, (pos, node_state))| html! {
-                <g>
-                    <circle
-                        cx={ pos.x.to_string() }
-                        cy={ pos.y.to_string() }
-                        r={ r.to_string() }
-                        onclick={ link.callback(move |_| Msg::NodeClick(node)) }
-                    />
-                    { self.view_blocks(node_state, pos.x + 8., pos.y - 8.) }
-                </g>
+            .map(|(node, (pos, node_state))| {
+                html! {
+                    <g>
+                        <circle
+                            cx={ pos.x.to_string() }
+                            cy={ pos.y.to_string() }
+                            r={ r.to_string() }
+                            onclick={ link.callback(move |_| Msg::NodeClick(node)) }
+                        />
+                        { self.view_blocks(node_state, pos.x + 8., pos.y - 8.) }
+                    </g>
+                }
             })
             .collect()
     }
     fn view_edges(&self, ctx: &Context<NetView>) -> Html {
         let link = ctx.link();
-        self
-            .edges
+        self.edges
             .edges
             .iter()
-            .map(|(&edge_endpoints, &(edge_type, line))| html! {
-                <g
-                    onclick={ link.callback(move |_| Msg::LinkClick(
-                        edge_endpoints.left(),
-                        edge_endpoints.right()
-                    )) }
-                >
-                    <line
-                        class="phantom-link"
-                        x1={ line.start.x.to_string() }
-                        y1={ line.start.y.to_string() }
-                        x2={ line.end.x.to_string() }
-                        y2={ line.end.y.to_string() }
-                        stroke="yellow"
-                        stroke-width=8
-                    />
-                    if edge_type != EdgeType::Phantom {
-                        if edge_type == EdgeType::Undirected {
-                            <line
-                                x1={ line.start.x.to_string() }
-                                y1={ line.start.y.to_string() }
-                                x2={ line.end.x.to_string() }
-                                y2={ line.end.y.to_string() }
-                                stroke="gray"
-                            />
-                        } else {
-                            // TODO: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/marker
-                            <line
-                                x1={ line.start.x.to_string() }
-                                y1={ line.start.y.to_string() }
-                                x2={ line.end.x.to_string() }
-                                y2={ line.end.y.to_string() }
-                                stroke="lightgray"
-                                stroke-dasharray="8,8"
-                            />
+            .map(|(&edge_endpoints, &(edge_type, line))| {
+                html! {
+                    <g
+                        onclick={ link.callback(move |_| Msg::LinkClick(
+                            edge_endpoints.left(),
+                            edge_endpoints.right()
+                        )) }
+                    >
+                        <line
+                            class="phantom-link"
+                            x1={ line.start.x.to_string() }
+                            y1={ line.start.y.to_string() }
+                            x2={ line.end.x.to_string() }
+                            y2={ line.end.y.to_string() }
+                            stroke="yellow"
+                            stroke-width=8
+                        />
+                        if edge_type != EdgeType::Phantom {
+                            if edge_type == EdgeType::Undirected {
+                                <line
+                                    x1={ line.start.x.to_string() }
+                                    y1={ line.start.y.to_string() }
+                                    x2={ line.end.x.to_string() }
+                                    y2={ line.end.y.to_string() }
+                                    stroke="gray"
+                                />
+                            } else {
+                                // TODO: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/marker
+                                <line
+                                    x1={ line.start.x.to_string() }
+                                    y1={ line.start.y.to_string() }
+                                    x2={ line.end.x.to_string() }
+                                    y2={ line.end.y.to_string() }
+                                    stroke="lightgray"
+                                    stroke-dasharray="8,8"
+                                />
+                            }
                         }
-                    }
-                </g>
+                    </g>
+                }
             })
             .collect()
     }
@@ -201,12 +200,7 @@ impl NetView {
                 }
             }).collect()
     }
-    fn view_blocks(
-        &self,
-        state: &nakamoto_consensus::NakamotoNodeState,
-        x: f32,
-        y: f32,
-    ) -> Html {
+    fn view_blocks(&self, state: &nakamoto_consensus::NakamotoNodeState, x: f32, y: f32) -> Html {
         let max_depth = 5;
         let block_height = 5.;
         let block_width = 5.;
@@ -266,20 +260,23 @@ impl NetView {
         }
         result.into_iter().collect()
     }
+    // TODO: this should be separate component; s.a. palette as prop todo above
     pub fn view_palette(&self) -> Html {
-        self
-            .colors
+        self.colors
             .all()
             .iter()
             .enumerate()
-            .map(|(i, color)| html! {
+            .map(|(i, color)| {
+                html! {
                 <circle
                     cx={ format!("{}", -40 + 5 * (i as i32)) }
                     cy={ format!("{}", -40) }
                     r=5
                     fill={ color.clone() }
                 />
-                }).collect()
+                }
+            })
+            .collect()
     }
 }
 
@@ -307,14 +304,20 @@ impl EdgeMap {
         new
     }
 
-    fn rebuild_if_changed(&mut self, world: &World, simtime_now: SimSeconds) -> bool {
-        let needs_update = world.query::<&PeerSet>().iter().any(|(_, peer_set)| peer_set.last_update() > self.last_update);
-        if needs_update {
+    fn rebuild_if_needed(&mut self, world: &World, simtime_now: SimSeconds) -> bool {
+        if self.needs_rebuild(world) {
             self.rebuild(world, simtime_now);
             true
         } else {
             false
         }
+    }
+
+    fn needs_rebuild(&self, world: &World) -> bool {
+        world
+            .query::<&PeerSet>()
+            .iter()
+            .any(|(_, peer_set)| peer_set.last_update() > self.last_update)
     }
 
     fn rebuild(&mut self, world: &World, simtime_now: SimSeconds) {
