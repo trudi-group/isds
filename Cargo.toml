@@ -3,6 +3,9 @@ members = [
   "isds",
   "sites/*"
 ]
+exclude = [
+  "sites/common"
+]
 
 [profile.release]
 lto = true
