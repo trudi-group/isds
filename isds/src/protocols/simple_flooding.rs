@@ -190,7 +190,7 @@ mod tests {
 
         sim.catch_up(1000.);
 
-        add_peer(&mut sim, node1, node2);
+        sim.add_peer(node1, node2);
 
         sim.catch_up(1000.);
 

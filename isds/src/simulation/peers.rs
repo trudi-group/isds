@@ -13,7 +13,7 @@ pub enum PeerSetUpdate {
 pub struct AddPeer(pub Entity, pub Entity);
 impl Command for AddPeer {
     fn execute(&self, sim: &mut Simulation) -> Result<(), Box<dyn Error>> {
-        add_peer(sim, self.0, self.1);
+        sim.add_peer(self.0, self.1);
         Ok(())
     }
 }
@@ -22,7 +22,7 @@ impl Command for AddPeer {
 pub struct RemovePeer(pub Entity, pub Entity);
 impl Command for RemovePeer {
     fn execute(&self, sim: &mut Simulation) -> Result<(), Box<dyn Error>> {
-        remove_peer(sim, self.0, self.1);
+        sim.remove_peer(self.0, self.1);
         Ok(())
     }
 }
@@ -31,7 +31,7 @@ impl Command for RemovePeer {
 pub struct MakeDelaunayNetwork;
 impl Command for MakeDelaunayNetwork {
     fn execute(&self, sim: &mut Simulation) -> Result<(), Box<dyn Error>> {
-        make_delaunay_network(sim);
+        sim.make_delaunay_network();
         Ok(())
     }
 }
@@ -87,86 +87,83 @@ impl IntoIterator for PeerSet {
     }
 }
 
-fn make_delaunay_network(sim: &mut Simulation) {
-    use delaunator::{triangulate, Point};
-    let (nodes, points): (Vec<Entity>, Vec<Point>) = sim
-        .world
-        .query_mut::<(&UnderlayNodeName, &UnderlayPosition)>()
-        .into_iter()
-        .map(|(id, (_, pos))| {
-            (
-                id,
-                Point {
-                    x: pos.x as f64,
-                    y: pos.y as f64,
-                },
-            )
-        })
-        .unzip();
-    for &node in nodes.iter() {
-        *peers(sim, node) = PeerSet::default();
+impl Simulation {
+    pub fn peers_mut(&mut self, node: Entity) -> hecs::RefMut<PeerSet> {
+        if self.world.get_mut::<PeerSet>(node).is_err() {
+            let peers = PeerSet::default();
+            self.world.insert_one(node, peers).unwrap();
+        }
+        self.world.get_mut::<PeerSet>(node).unwrap()
     }
-    let triangles = triangulate(&points)
-        .expect("No triangulation exists.")
-        .triangles;
-    assert!(triangles.len() % 3 == 0);
-    for i in (0..triangles.len()).step_by(3) {
-        let node1 = nodes[triangles[i]];
-        let node2 = nodes[triangles[i + 1]];
-        let node3 = nodes[triangles[i + 2]];
-        add_peer(sim, node1, node2);
-        add_peer(sim, node1, node3);
-        add_peer(sim, node2, node1);
-        add_peer(sim, node2, node3);
-        add_peer(sim, node3, node1);
-        add_peer(sim, node3, node2);
+    pub fn add_peer(&mut self, node: Entity, peer: Entity) {
+        let now = self.time.now();
+        self.peers_mut(node).insert(peer, now);
+        self.schedule_now(Event::Node(
+            node,
+            NodeEvent::PeerSetChanged(PeerSetUpdate::PeerAdded(peer)),
+        ));
     }
-}
-
-pub fn add_random_nodes_as_peers(
-    sim: &mut Simulation,
-    node: Entity,
-    new_peers_min: usize,
-    new_peers_max: usize,
-) {
-    let mut candidates = sim.all_other_nodes(node);
-    let peers = peers(sim, node).clone();
-    candidates.retain(|id| !peers.contains(id));
-
-    let new_peers_min = cmp::min(new_peers_min, candidates.len());
-    let new_peers_max = cmp::min(new_peers_max, candidates.len());
-    let number_of_new_peers = sim.rng.gen_range(new_peers_min..new_peers_max);
-
-    let new_peers = candidates.choose_multiple(&mut sim.rng, number_of_new_peers);
-    for &peer in new_peers {
-        add_peer(sim, node, peer);
+    pub fn remove_peer(&mut self, node: Entity, peer: Entity) {
+        let now = self.time.now();
+        self.peers_mut(node).remove(&peer, now);
+        self.schedule_now(Event::Node(
+            node,
+            NodeEvent::PeerSetChanged(PeerSetUpdate::PeerRemoved(peer)),
+        ));
     }
-}
+    pub fn add_random_nodes_as_peers(
+        &mut self,
+        node: Entity,
+        new_peers_min: usize,
+        new_peers_max: usize,
+    ) {
+        let mut candidates = self.all_other_nodes(node);
+        let peers = self.peers_mut(node).clone();
+        candidates.retain(|id| !peers.contains(id));
 
-pub fn add_peer(sim: &mut Simulation, node: Entity, peer: Entity) {
-    let now = sim.time.now();
-    peers(sim, node).insert(peer, now);
-    sim.schedule_now(Event::Node(
-        node,
-        NodeEvent::PeerSetChanged(PeerSetUpdate::PeerAdded(peer)),
-    ));
-}
+        let new_peers_min = cmp::min(new_peers_min, candidates.len());
+        let new_peers_max = cmp::min(new_peers_max, candidates.len());
+        let number_of_new_peers = self.rng.gen_range(new_peers_min..new_peers_max);
 
-pub fn remove_peer(sim: &mut Simulation, node: Entity, peer: Entity) {
-    let now = sim.time.now();
-    peers(sim, node).remove(&peer, now);
-    sim.schedule_now(Event::Node(
-        node,
-        NodeEvent::PeerSetChanged(PeerSetUpdate::PeerRemoved(peer)),
-    ));
-}
-
-pub fn peers(sim: &mut Simulation, node: Entity) -> hecs::RefMut<PeerSet> {
-    if sim.world.get_mut::<PeerSet>(node).is_err() {
-        let peers = PeerSet::default();
-        sim.world.insert_one(node, peers).unwrap();
+        let new_peers = candidates.choose_multiple(&mut self.rng, number_of_new_peers);
+        for &peer in new_peers {
+            self.add_peer(node, peer);
+        }
     }
-    sim.world.get_mut::<PeerSet>(node).unwrap()
+
+    fn make_delaunay_network(&mut self) {
+        use delaunator::{triangulate, Point};
+        let (nodes, points): (Vec<Entity>, Vec<Point>) = self
+            .world
+            .query_mut::<(&UnderlayNodeName, &UnderlayPosition)>()
+            .into_iter()
+            .map(|(id, (_, pos))| {
+                (
+                    id,
+                    Point {
+                        x: pos.x as f64,
+                        y: pos.y as f64,
+                    },
+                )
+            })
+            .unzip();
+        for &node in nodes.iter() {
+            *self.peers_mut(node) = PeerSet::default();
+        }
+        let triangles = triangulate(&points).triangles;
+        assert!(triangles.len() % 3 == 0);
+        for i in (0..triangles.len()).step_by(3) {
+            let node1 = nodes[triangles[i]];
+            let node2 = nodes[triangles[i + 1]];
+            let node3 = nodes[triangles[i + 2]];
+            self.add_peer(node1, node2);
+            self.add_peer(node1, node3);
+            self.add_peer(node2, node1);
+            self.add_peer(node2, node3);
+            self.add_peer(node3, node1);
+            self.add_peer(node3, node2);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -181,7 +178,7 @@ mod tests {
         let mut sim = Simulation::new();
         let node1 = sim.spawn_random_node();
         let node2 = sim.spawn_random_node();
-        add_peer(&mut sim, node1, node2);
+        sim.add_peer(node1, node2);
 
         let expected = PeerSet {
             peers: vec![node2].into_iter().collect(),
@@ -201,9 +198,9 @@ mod tests {
         sim.spawn_random_node();
         sim.spawn_random_node();
 
-        add_random_nodes_as_peers(&mut sim, node1, 2, 3);
+        sim.add_random_nodes_as_peers(node1, 2, 3);
 
-        let peers = peers(&mut sim, node1);
+        let peers = sim.peers_mut(node1);
         let actual = peers.len();
         let expected_min = 2;
         let expected_max = 3;

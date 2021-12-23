@@ -159,10 +159,10 @@ mod tests {
         let node1 = sim.spawn_random_node();
         let node2 = sim.spawn_random_node();
         let node3 = sim.spawn_random_node();
-        add_peer(&mut sim, node1, node2);
-        add_peer(&mut sim, node2, node1);
-        add_peer(&mut sim, node2, node3);
-        add_peer(&mut sim, node3, node2);
+        sim.add_peer(node1, node2);
+        sim.add_peer(node2, node1);
+        sim.add_peer(node2, node3);
+        sim.add_peer(node3, node2);
 
         sim.do_now(PokeNode(node1));
         sim.catch_up(100.);
@@ -203,10 +203,10 @@ mod tests {
         let node1 = sim.spawn_random_node();
         let node2 = sim.spawn_random_node();
         let node3 = sim.spawn_random_node();
-        add_peer(&mut sim, node1, node2);
-        add_peer(&mut sim, node2, node1);
-        add_peer(&mut sim, node2, node3);
-        add_peer(&mut sim, node3, node2);
+        sim.add_peer(node1, node2);
+        sim.add_peer(node2, node1);
+        sim.add_peer(node2, node3);
+        sim.add_peer(node3, node2);
 
         sim.do_now(PokeNode(node1));
         sim.catch_up(100.);
@@ -249,10 +249,10 @@ mod tests {
         let node1 = sim.spawn_random_node();
         let node2 = sim.spawn_random_node();
         let node3 = sim.spawn_random_node();
-        add_peer(&mut sim, node1, node2);
-        add_peer(&mut sim, node2, node1);
-        add_peer(&mut sim, node2, node3);
-        add_peer(&mut sim, node3, node2);
+        sim.add_peer(node1, node2);
+        sim.add_peer(node2, node1);
+        sim.add_peer(node2, node3);
+        sim.add_peer(node3, node2);
 
         sim.do_now(PokeNode(node1));
         sim.catch_up(100.);
@@ -342,8 +342,8 @@ mod tests {
 
         sim.catch_up(10.);
 
-        add_peer(&mut sim, node1, node2);
-        add_peer(&mut sim, node2, node1);
+        sim.add_peer(node1, node2);
+        sim.add_peer(node2, node1);
 
         sim.catch_up(10.);
 
