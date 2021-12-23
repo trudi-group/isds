@@ -18,6 +18,7 @@ mod logger;
 mod peers;
 mod pokes;
 mod protocol;
+mod shared;
 mod time;
 mod underlay;
 
@@ -27,6 +28,7 @@ pub use command::Command;
 pub use event_queue::EventQueue;
 pub use logger::Logger;
 pub use protocol::{InvokeProtocolForAllNodes, NodeInterface, Payload, Protocol};
+pub use shared::*;
 pub use time::{OrderedFloat, RealSeconds, SimSeconds, Time, TimeSpan};
 
 pub use peers::*;

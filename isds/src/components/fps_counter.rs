@@ -33,7 +33,7 @@ impl Component for FpsCounter {
     type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
-        let (_, _context_handle) = get_context_data!(ctx, Self);
+        let (_, _context_handle) = get_isds_context!(ctx, Self);
         Self {
             fps_sample: 0.,
             last_render_at: 0.,

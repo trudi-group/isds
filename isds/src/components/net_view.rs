@@ -4,7 +4,7 @@ use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 
 pub struct NetView {
-    sim: Rc<RefCell<Simulation>>,
+    sim: SharedSimulation,
     colors: PseudorandomColors,
     edges: EdgeMap,
     _context_handle: yew::context::ContextHandle<IsdsContext>,
@@ -22,7 +22,7 @@ impl Component for NetView {
     type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
-        let (context_data, _context_handle) = get_context_data!(ctx, Self);
+        let (context_data, _context_handle) = get_isds_context!(ctx, Self);
 
         let sim = context_data.sim;
 

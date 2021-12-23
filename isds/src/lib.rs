@@ -7,9 +7,6 @@ use gloo::render::{request_animation_frame, AnimationFrame};
 pub use yew;
 use yew::prelude::*;
 
-use std::cell::RefCell;
-use std::rc::Rc;
-
 mod components;
 pub use components::*;
 
@@ -20,28 +17,15 @@ mod simulation;
 pub use simulation::*;
 
 pub struct Isds {
-    pub sim: Rc<RefCell<Simulation>>,
+    pub sim: SharedSimulation,
     last_render: RealSeconds,
     _render_loop_handle: Option<AnimationFrame>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct IsdsContext {
-    pub sim: Rc<RefCell<Simulation>>,
+    pub sim: SharedSimulation,
     pub last_render: RealSeconds,
-}
-impl PartialEq for IsdsContext {
-    fn eq(&self, other: &Self) -> bool {
-        Rc::ptr_eq(&self.sim, &other.sim) && self.last_render == other.last_render
-    }
-}
-impl std::fmt::Debug for IsdsContext {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("State")
-            .field("sim", &"hidden")
-            .field("last_render", &self.last_render)
-            .finish()
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -49,17 +33,12 @@ pub enum Msg {
     Rendered(RealSeconds),
 }
 
-#[derive(Properties)]
+#[derive(Properties, PartialEq)]
 pub struct Props {
     #[prop_or_default]
     pub children: Children,
     #[prop_or_default]
-    pub sim: Rc<RefCell<Simulation>>,
-}
-impl PartialEq for Props {
-    fn eq(&self, other: &Self) -> bool {
-        self.children == other.children && Rc::ptr_eq(&self.sim, &other.sim)
-    }
+    pub sim: SharedSimulation,
 }
 
 impl Component for Isds {

@@ -40,6 +40,12 @@ impl Time {
     pub fn set_speed(&mut self, speed: f64) {
         self.speed_factor = speed;
     }
+    pub fn speed_up_tenfold_clamped(&mut self) {
+        self.speed_factor = (self.speed_factor * 10f64).clamp(0.001f64, 1000f64);
+    }
+    pub fn slow_down_tenfold_clamped(&mut self) {
+        self.speed_factor = (self.speed_factor / 10f64).clamp(0.001f64, 1000f64);
+    }
     pub fn toggle_paused(&mut self) {
         self.paused = !self.paused;
     }
