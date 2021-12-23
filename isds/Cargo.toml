@@ -6,7 +6,7 @@ description = "Interactive Simulation of Distributed Systems; Prototype for Bitc
 categories = ["simulation", "visualization"]
 license = "MIT"
 readme = "./README.md"
-edition = "2018"
+edition = "2021"
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3"
@@ -24,11 +24,3 @@ rand_distr = "0.4.1"
 gloo = "0.5"
 getrandom = { version = "0.2", features = ["js"] }
 readonly = "0.2.0"
-
-[profile.release]
-lto = true
-opt-level = 3
-codegen-units = 1
-
-[package.metadata.wasm-pack.profile.release]
-wasm-opt = ['-O4']
