@@ -9,10 +9,13 @@ use super::*;
 #[function_component(TimeUi)]
 pub fn time_ui() -> Html {
     html! {
-        <div>
-            <TimeControls/>
-            { " | " }
-            <TimeDisplay/>
+        <div class="is-flex">
+            <div class="buttons are-small">
+                <TimeControls/>
+            </div>
+            <div class="mx-1 p-1">
+                <TimeDisplay/>
+            </div>
         </div>
     }
 }
@@ -37,8 +40,8 @@ pub fn time_controls() -> Html {
     };
 
     html! {
-        <span>
-            <button onclick={ on_pause_play }>
+        <>
+            <button class="button" onclick={ on_pause_play }>
                 if context.sim.borrow().time.paused() {
                     <span class="icon">
                         <i class="fas fa-play"></i>
@@ -49,17 +52,17 @@ pub fn time_controls() -> Html {
                     </span>
                 }
             </button>
-            <button onclick={ on_slower }>
+            <button class="button" onclick={ on_slower }>
                 <span class="icon">
                     <i class="fas fa-backward"></i>
                 </span>
             </button>
-            <button onclick={ on_faster }>
+            <button class="button" onclick={ on_faster }>
                 <span class="icon">
                     <i class="fas fa-forward"></i>
                 </span>
             </button>
-        </span>
+        </>
     }
 }
 

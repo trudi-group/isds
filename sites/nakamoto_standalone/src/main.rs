@@ -15,9 +15,14 @@ impl Component for NakamotoStandalone {
 
         html! {
             <isds::Isds sim={ sim.into_shared() }>
-                <isds::TimeUi />
-                { "FPS: " } <isds::FpsCounter />
-                <br />
+                <div style="margin-bottom: -50px"> // chosen based on `buffer_space` of `NetView`
+                    <div class="is-flex">
+                        <isds::TimeUi />
+                        <div class="mx-1 p-1">
+                            { "FPS: " } <isds::FpsCounter />
+                        </div>
+                    </div>
+                </div>
                 <isds::NetView />
             </isds::Isds>
         }
@@ -38,5 +43,7 @@ fn init_simulation() -> isds::Simulation {
 }
 
 fn main() {
-    yew::start_app::<NakamotoStandalone>();
+    let document = isds::gloo::utils::document();
+    let element = document.query_selector("#app").unwrap().unwrap();
+    yew::start_app_in_element::<NakamotoStandalone>(element);
 }

@@ -51,22 +51,26 @@ impl Component for NetView {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let buffer_space = 50.;
+        let buffer_space = 50.; // chosen based on node radius and blockchain box size
         html! {
-            <svg
-               viewBox={ format!("{} {} {} {}",
-                   -buffer_space,
-                   -buffer_space,
-                   self.sim.borrow().underlay_width() + 2. * buffer_space,
-                   self.sim.borrow().underlay_height() + 2. * buffer_space
-                ) }
-                style=r#"border-style: "solid"; max-width: 1024px"#
-            >
-                { self.view_palette() }
-                { self.view_edges(ctx) }
-                { self.view_nodes(ctx) }
-                { self.view_messages() }
-            </svg>
+            <>
+                <style>
+                    { " .phantom-link { opacity: 0.0; } .phantom-link:hover { opacity: 1.0; }" }
+                </style>
+                <svg
+                   viewBox={ format!("{} {} {} {}",
+                       -buffer_space,
+                       -buffer_space,
+                       self.sim.borrow().underlay_width() + 2. * buffer_space,
+                       self.sim.borrow().underlay_height() + 2. * buffer_space
+                    ) }
+                >
+                    // { self.view_palette() }
+                    { self.view_edges(ctx) }
+                    { self.view_nodes(ctx) }
+                    { self.view_messages() }
+                </svg>
+            </>
         }
     }
 
@@ -149,7 +153,8 @@ impl NetView {
                             y1={ line.start.y.to_string() }
                             x2={ line.end.x.to_string() }
                             y2={ line.end.y.to_string() }
-                            stroke="yellow"
+                            stroke="gray"
+                            stroke-opacity="0.3"
                             stroke-width=8
                         />
                         if edge_type != EdgeType::Phantom {

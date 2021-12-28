@@ -1,7 +1,7 @@
 #![allow(clippy::wildcard_imports)]
 #![macro_use]
-extern crate gloo;
-use gloo::console::log;
+pub use gloo;
+pub use gloo::console::log;
 use gloo::render::{request_animation_frame, AnimationFrame};
 
 pub use yew;
