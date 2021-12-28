@@ -3,6 +3,7 @@ use super::*;
 use std::cmp;
 use std::collections::BTreeSet;
 
+/// The parameter of `NodeEvent::PeerSetChanged`
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum PeerSetUpdate {
     PeerAdded(Entity),
@@ -73,6 +74,9 @@ impl PeerSet {
     }
     pub fn len(&self) -> usize {
         self.peers.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.peers.is_empty()
     }
     pub fn last_update(&self) -> SimSeconds {
         self.last_update

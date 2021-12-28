@@ -62,25 +62,24 @@ pub struct Simulation {
     pub world: World,
 
     #[readonly]
-    pub rng: ThreadRng,
-
-    #[readonly]
     pub logger: Logger,
 
     additional_event_handlers: Vec<Box<dyn EventHandler>>,
-    event_queue: EventQueue,
     underlay_config: UnderlayConfig,
+
+    event_queue: EventQueue,
+    rng: ThreadRng,
 }
 impl Simulation {
     pub fn new() -> Self {
         Self {
-            world: World::new(),
             time: Time::new(0.1),
-            rng: rand::thread_rng(),
+            world: World::new(),
             logger: Logger::new(),
             additional_event_handlers: vec![],
-            event_queue: EventQueue::new(),
             underlay_config: UnderlayConfig::new(800., 800.),
+            event_queue: EventQueue::new(),
+            rng: rand::thread_rng(),
         }
     }
     pub fn add_event_handler(&mut self, event_handler: impl EventHandler + 'static) {
