@@ -40,16 +40,24 @@ pub fn time_controls() -> Html {
         <span>
             <button onclick={ on_pause_play }>
                 if context.sim.borrow().time.paused() {
-                    { "▶️" }
+                    <span class="icon">
+                        <i class="fas fa-play"></i>
+                    </span>
                 } else {
-                    { "⏸️" }
+                    <span class="icon">
+                        <i class="fas fa-pause"></i>
+                    </span>
                 }
             </button>
             <button onclick={ on_slower }>
-                { "⏪" }
+                <span class="icon">
+                    <i class="fas fa-backward"></i>
+                </span>
             </button>
             <button onclick={ on_faster }>
-                { "⏩" }
+                <span class="icon">
+                    <i class="fas fa-forward"></i>
+                </span>
             </button>
         </span>
     }
