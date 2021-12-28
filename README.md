@@ -31,5 +31,5 @@ You can automate the running of tests on file changes using [`cargo watch`](http
 
 ## Deploy
 
-1. Run `trunk build --release`.
+1. Run `trunk build --release --public-url URL` where `URL` is the URL at which you plan to serve the site (can also be a relative URL like `"/isds/"`; defaults to `"/"`).
 1. The contents of the `dist` folder are the website; copy them to where you want the site to be hosted at.
