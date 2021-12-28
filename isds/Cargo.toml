@@ -1,5 +1,5 @@
 [package]
-version = "0.2.0"
+version = "0.3.0"
 name = "isds"
 authors = ["Martin Florian <martin.florian@hu-berlin.de>"]
 description = "Interactive Simulation of Distributed Systems; Prototype for Bitcoin Consensus"
