@@ -1,10 +1,8 @@
 #![allow(clippy::wildcard_imports)]
 #![macro_use]
-pub use gloo;
 pub use gloo::console::log;
 use gloo::render::{request_animation_frame, AnimationFrame};
 
-pub use yew;
 use yew::prelude::*;
 
 mod components;
@@ -79,14 +77,6 @@ impl Component for Isds {
     }
 
     fn rendered(&mut self, ctx: &Context<Self>, _first_render: bool) {
-        // if first_render { // TODO ? or rather something for a UI component ?
-        //     let window = gloo::utils::window();
-        //     window.add_event_listener_with_callback(
-        //         "onkeydown",
-        //         ctx.link().callback(move |e: KeyboardEvent| { e.prevent_default(); Msg::KeyDown(e) })
-        //     );
-        // }
-
         // code inspired by yew's webgl example
         let handle = {
             let link = ctx.link().clone();

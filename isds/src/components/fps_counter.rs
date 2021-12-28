@@ -52,5 +52,3 @@ impl Component for FpsCounter {
         }
     }
 }
-
-// TODO: tests?

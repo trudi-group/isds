@@ -21,7 +21,6 @@ impl SharedSimulation {
 impl std::fmt::Debug for SharedSimulation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SharedSimulation")
-            // .field("sim_time", self.0.borrow().time.sim_time) // FIXME
             .field("details", &"hidden")
             .finish()
     }

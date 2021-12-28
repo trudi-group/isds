@@ -8,3 +8,6 @@ edition = "2021"
 [dependencies]
 isds = { path = "../../isds/" }
 yew = "0.19"
+gloo = "0.5"
+web-sys = "0.3"
+wasm-bindgen = "0.2"

@@ -78,7 +78,7 @@ impl Component for NetView {
         match msg {
             Msg::Rendered(_) => {
                 self.rebuild_edges_if_changed();
-                true // always redraw, because messages (TODO?)
+                true // often enough, we'll have in-flight messages that have to be redrawn
             }
             Msg::NodeClick(node) => {
                 // TODO perhaps configure node click action using a property?

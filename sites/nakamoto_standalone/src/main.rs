@@ -1,20 +1,25 @@
-use yew::prelude::*; // TODO make this a reexport of isds maybe? check how yew example do this
+use isds::{log, PokeRandomNode, SharedSimulation};
+use wasm_bindgen::JsCast;
+use yew::prelude::*;
 
-struct NakamotoStandalone;
+struct NakamotoStandalone {
+    sim: SharedSimulation,
+    _key_listener: gloo::events::EventListener,
+}
 
 impl Component for NakamotoStandalone {
     type Message = ();
     type Properties = ();
 
     fn create(_: &Context<Self>) -> Self {
-        Self
+        let sim = init_simulation().into_shared();
+        let _key_listener = init_keyboard_listener(sim.clone());
+        Self { sim, _key_listener }
     }
 
     fn view(&self, _: &Context<Self>) -> Html {
-        let sim = init_simulation();
-
         html! {
-            <isds::Isds sim={ sim.into_shared() }>
+            <isds::Isds sim={ self.sim.clone() }>
                 <div style="margin-bottom: -50px"> // chosen based on `buffer_space` of `NetView`
                     <div class="is-flex">
                         <isds::TimeUi />
@@ -27,6 +32,20 @@ impl Component for NakamotoStandalone {
             </isds::Isds>
         }
     }
+}
+
+fn init_keyboard_listener(sim: SharedSimulation) -> gloo::events::EventListener {
+    let window = gloo::utils::window();
+    gloo::events::EventListener::new(&window, "keydown", move |event| {
+        let e = event.clone().dyn_into::<web_sys::KeyboardEvent>().unwrap();
+        match e.key().as_str() {
+            " " => sim.borrow_mut().time.toggle_paused(),
+            "ArrowLeft" => sim.borrow_mut().time.slow_down_tenfold_clamped(),
+            "ArrowRight" => sim.borrow_mut().time.speed_up_tenfold_clamped(),
+            "m" => sim.borrow_mut().do_now(PokeRandomNode),
+            _ => log!("Unmapped key pressed: {:?}", e),
+        }
+    })
 }
 
 fn init_simulation() -> isds::Simulation {
@@ -43,7 +62,7 @@ fn init_simulation() -> isds::Simulation {
 }
 
 fn main() {
-    let document = isds::gloo::utils::document();
+    let document = gloo::utils::document();
     let element = document.query_selector("#app").unwrap().unwrap();
     yew::start_app_in_element::<NakamotoStandalone>(element);
 }
