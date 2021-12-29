@@ -72,12 +72,15 @@ pub struct Simulation {
 }
 impl Simulation {
     pub fn new() -> Self {
+        Self::new_with_underlay_dimensions(800., 800.)
+    }
+    pub fn new_with_underlay_dimensions(width: f32, height: f32) -> Self {
         Self {
             time: Time::new(0.1),
             world: World::new(),
             logger: Logger::new(),
             additional_event_handlers: vec![],
-            underlay_config: UnderlayConfig::new(800., 800.),
+            underlay_config: UnderlayConfig::new(width, height),
             event_queue: EventQueue::new(),
             rng: rand::thread_rng(),
         }

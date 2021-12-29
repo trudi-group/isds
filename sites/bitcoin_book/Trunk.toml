@@ -1,0 +1,7 @@
+[[hooks]]
+stage = "build"
+command = "wasm-pack"
+command_arguments = ["test", "--headless", "--firefox"]
+
+[watch]
+watch = ["../.."] # to also catch changes to isds

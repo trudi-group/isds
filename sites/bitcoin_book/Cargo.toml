@@ -1,0 +1,13 @@
+[package]
+name = "bitcoin_book"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+isds = { path = "../../isds/" }
+yew = "0.19"
+gloo = "0.5"
+web-sys = "0.3"
+wasm-bindgen = "0.2"
