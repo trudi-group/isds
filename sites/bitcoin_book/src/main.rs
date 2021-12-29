@@ -37,14 +37,13 @@ impl Component for BitcoinBook {
                     <div class="columns">
                         <div class="box column">
                             <isds::Isds sim={ self.sim.clone() }>
-                                <div style="margin-bottom: -50px"> // chosen based on `buffer_space` of `NetView`
+                                <isds::Wallet />
                                     <div class="is-flex">
                                         <isds::TimeUi />
                                         <div class="mx-1 p-1">
                                             { "FPS: " } <isds::FpsCounter />
                                         </div>
                                     </div>
-                                </div>
                                 <isds::NetView />
                             </isds::Isds>
                         </div>

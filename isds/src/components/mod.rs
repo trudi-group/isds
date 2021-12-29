@@ -24,3 +24,6 @@ pub use net_view::NetView;
 
 mod time_ui;
 pub use time_ui::{TimeControls, TimeDisplay, TimeUi};
+
+mod wallet;
+pub use wallet::Wallet;
