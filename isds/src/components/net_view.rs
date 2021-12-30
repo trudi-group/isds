@@ -1,5 +1,7 @@
 use super::*;
 
+use blockchain_types::BlockHeader;
+
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 
@@ -184,26 +186,37 @@ impl NetView {
             .collect()
     }
     fn view_messages(&self) -> Html {
+        // TODO: currently more like: view_nakamoto_consensus_messages...
         let time_now = self.sim.borrow().time.now();
-        self.sim.borrow().world
+        self.sim
+            .borrow()
+            .world
             .query::<(
                 &UnderlayLine,
                 &TimeSpan,
-                &simple_flooding::SimpleFloodingMessage<nakamoto_consensus::Block>,
+                &simple_flooding::SimpleFloodingMessage<nakamoto_consensus::InventoryItem>,
             )>()
             .into_iter()
             .map(|(_, (trajectory, time_span, message))| {
                 let (x, y) = message_position(trajectory, time_span, time_now);
-                let block = message.0;
-                html! {
-                    <circle
-                        cx={ x.to_string() }
-                        cy={ y.to_string() }
-                        r=2
-                        fill={ self.colors.get(nakamoto_consensus::to_number(block.hash())).to_string() }
-                    />
+                match message.0 {
+                    nakamoto_consensus::InventoryItem::Transaction(_) => {
+                        todo!();
+                        html! {}
+                    }
+                    nakamoto_consensus::InventoryItem::Block(block_id) => {
+                        html! {
+                            <circle
+                                cx={ x.to_string() }
+                                cy={ y.to_string() }
+                                r=2
+                                fill={ self.colors.get(block_id.id()).to_string() }
+                            />
+                        }
+                    }
                 }
-            }).collect()
+            })
+            .collect()
     }
     fn view_blocks(&self, state: &nakamoto_consensus::NakamotoNodeState, x: f32, y: f32) -> Html {
         let max_depth = 5;
@@ -211,15 +224,15 @@ impl NetView {
         let block_width = 5.;
         let block_spacing = 2.;
 
-        let block_map = block_map(state, max_depth);
+        let block_map = blocks_cutout(state, max_depth);
         let mut result = vec![];
 
         for i in 0..block_map.len() {
             for j in 0..block_map[i].len() {
-                if let Some(block_hash) = block_map[i][j] {
+                if let Some(block_id) = block_map[i][j] {
                     if let Some(k) = block_map.iter().take(i).enumerate().find_map(|(k, chain)| {
-                        if let Some(other_chain_hash) = chain[j] {
-                            if other_chain_hash == block_hash {
+                        if let Some(other_chain_id) = chain[j] {
+                            if other_chain_id == block_id {
                                 Some(k)
                             } else {
                                 None
@@ -235,7 +248,7 @@ impl NetView {
                                     x2={ (x + (block_width + block_spacing) * (k as f32) + block_width).to_string() }
                                     y1={ (y + (block_height + block_spacing) * (j as f32)).to_string() }
                                     y2={ (y + (block_height + block_spacing) * (j as f32) + block_height /2.).to_string() }
-                                    stroke={ (self.colors.get(nakamoto_consensus::to_number(block_map[i][j-1].unwrap()))).to_string() }
+                                    stroke={ self.colors.get(block_map[i][j-1].unwrap().id()).to_string() }
                                 />
                             }
                         );
@@ -247,7 +260,7 @@ impl NetView {
                                 y={ (y + (block_height + block_spacing)* (j as f32)).to_string() }
                                 width={ (block_width).to_string() }
                                 height={ (block_height).to_string() }
-                                fill={ self.colors.get(nakamoto_consensus::to_number(block_hash)).to_string() }
+                                fill={ self.colors.get(block_id.id()).to_string() }
                             />
                         });
                         result.push(html! {
@@ -256,7 +269,7 @@ impl NetView {
                                 x2={ (x + (block_width + block_spacing) * (i as f32) + block_width / 2.).to_string() }
                                 y1={ (y + (block_height + block_spacing) * (j as f32) + block_height).to_string() }
                                 y2={ (y + (block_height + block_spacing) * ((j + 1) as f32)).to_string() }
-                                stroke={ (self.colors.get(nakamoto_consensus::to_number(block_hash))).to_string() }
+                                stroke={ (self.colors.get(block_id.id())).to_string() }
                             />
                         });
                     }
@@ -449,34 +462,38 @@ fn pseudorandomize(number: u32) -> u32 {
     big_prime.wrapping_mul(number)
 }
 
-fn block_map(
+fn blocks_cutout(
     state: &nakamoto_consensus::NakamotoNodeState,
     max_depth: usize,
-) -> Vec<Vec<Option<nakamoto_consensus::Hash>>> {
+) -> Vec<Vec<Option<Entity>>> {
     let mut main_chain = vec![];
-    let mut block_hash = state.tip();
+    let mut block_id = state.tip();
     for _ in 0..max_depth {
-        if block_hash == nakamoto_consensus::Hash::default() {
+        if block_id == None {
             break;
         }
-        main_chain.push(Some(block_hash));
-        block_hash = state.hash_prev(block_hash).unwrap();
+        main_chain.push(block_id);
+        block_id = state.block_header(block_id.unwrap()).unwrap().id_prev;
     }
     let mut result = vec![main_chain];
-    let tip_height = state.height(state.tip());
-    for (fork_height_diff, mut block_hash) in state
+    for (fork_height_diff, mut block_id) in state
         .fork_tips()
         .iter()
-        .map(|&f| (tip_height - state.height(f), f))
+        .map(|&ft| {
+            (
+                state.tip_height() - state.block_header(ft).unwrap().height,
+                Some(ft),
+            )
+        })
         .filter(|(height_diff, _)| *height_diff < max_depth)
     {
         result.push(vec![None; fork_height_diff]);
         for _ in fork_height_diff..max_depth {
-            if block_hash == nakamoto_consensus::Hash::default() {
+            if block_id == None {
                 break;
             }
-            result.last_mut().unwrap().push(Some(block_hash));
-            block_hash = state.hash_prev(block_hash).unwrap();
+            result.last_mut().unwrap().push(block_id);
+            block_id = state.block_header(block_id.unwrap()).unwrap().id_prev;
         }
     }
     result

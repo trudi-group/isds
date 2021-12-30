@@ -15,6 +15,7 @@ mod command;
 mod despawner;
 mod event_queue;
 mod logger;
+mod node_interface;
 mod peers;
 mod pokes;
 mod protocol;
@@ -27,7 +28,8 @@ use despawner::Despawner;
 pub use command::Command;
 pub use event_queue::EventQueue;
 pub use logger::Logger;
-pub use protocol::{InvokeProtocolForAllNodes, NodeInterface, Payload, Protocol};
+pub use node_interface::{blockchain_types, NodeInterface};
+pub use protocol::{InvokeProtocolForAllNodes, Payload, Protocol};
 pub use shared::*;
 pub use time::{OrderedFloat, RealSeconds, SimSeconds, Time, TimeSpan};
 

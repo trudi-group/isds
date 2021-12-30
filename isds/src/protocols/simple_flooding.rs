@@ -4,7 +4,7 @@ use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::marker::PhantomData;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct SimpleFlooding<T: Payload> {
     payload_type: PhantomData<T>,
 }
@@ -13,6 +13,11 @@ impl<T: Payload> SimpleFlooding<T> {
         Self {
             payload_type: PhantomData,
         }
+    }
+}
+impl<T: Payload> Default for SimpleFlooding<T> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -25,7 +30,7 @@ impl<T: Payload + Default + Hash + Eq> Command for StartSimpleFlooding<T> {
     }
 }
 
-impl<T: Payload + Default + Hash + Eq> Protocol for SimpleFlooding<T> {
+impl<T: Payload + Hash + Eq> Protocol for SimpleFlooding<T> {
     type MessagePayload = SimpleFloodingMessage<T>;
 
     fn handle_message(
@@ -66,13 +71,21 @@ impl<T: Payload + Default + Hash + Eq> Protocol for SimpleFlooding<T> {
 pub struct SimpleFloodingMessage<T>(pub T);
 
 // TODO: also clear messages from seen set at some point? or isn't that "simple" anymore?
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct SimpleFloodingState<T> {
     pub own_haves: HashSet<T>,
     peer_haves: HashMap<Entity, HashSet<T>>,
 }
+impl<T> Default for SimpleFloodingState<T> {
+    fn default() -> Self {
+        Self {
+            own_haves: Default::default(),
+            peer_haves: Default::default(),
+        }
+    }
+}
 
-impl<T: Payload + Default + Hash + Eq> SimpleFlooding<T> {
+impl<T: Payload + Hash + Eq> SimpleFlooding<T> {
     pub fn flood(node: &mut NodeInterface, message: T) {
         let peers = node.get::<PeerSet>().clone(); // TODO: again, the clone here is not ideal
         let flooding_state = node.get::<SimpleFloodingState<T>>();
@@ -117,16 +130,12 @@ impl<T: Payload + Default + Hash + Eq> SimpleFlooding<T> {
     }
 }
 
-fn is_new<T: Payload + Default + Hash + Eq>(node: &mut NodeInterface, message: &T) -> bool {
+fn is_new<T: Payload + Hash + Eq>(node: &mut NodeInterface, message: &T) -> bool {
     let flooding_state = node.get::<SimpleFloodingState<T>>();
     !flooding_state.own_haves.contains(message)
 }
 
-fn register_sender<T: Payload + Default + Hash + Eq>(
-    node: &mut NodeInterface,
-    message: &T,
-    sender: Entity,
-) {
+fn register_sender<T: Payload + Hash + Eq>(node: &mut NodeInterface, message: &T, sender: Entity) {
     let flooding_state = node.get::<SimpleFloodingState<T>>();
     match flooding_state.peer_haves.entry(sender) {
         Entry::Occupied(mut e) => {

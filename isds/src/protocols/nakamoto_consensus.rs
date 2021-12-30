@@ -1,11 +1,12 @@
 use super::*;
 use simple_flooding::*;
-use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+
+use blockchain_types::*;
 
 #[derive(Debug, Default)]
 pub struct NakamotoConsensus {
-    flooding: SimpleFlooding<Block>,
+    flooding: SimpleFlooding<InventoryItem>,
 }
 impl NakamotoConsensus {
     pub fn new() -> Self {
@@ -15,8 +16,14 @@ impl NakamotoConsensus {
     }
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+pub enum InventoryItem {
+    Transaction(Entity),
+    Block(Entity),
+}
+
 impl Protocol for NakamotoConsensus {
-    type MessagePayload = SimpleFloodingMessage<Block>;
+    type MessagePayload = SimpleFloodingMessage<InventoryItem>;
 
     fn handle_message(
         &self,
@@ -24,18 +31,27 @@ impl Protocol for NakamotoConsensus {
         underlay_message: UnderlayMessage,
         message_payload: Self::MessagePayload,
     ) -> Result<(), Box<dyn Error>> {
-        node.get::<NakamotoNodeState>()
-            .register_block(message_payload.0);
+        match message_payload.0 {
+            InventoryItem::Transaction(_) => {
+                todo!();
+            }
+            InventoryItem::Block(block_id) => {
+                let block_header = *node
+                    .get_block_header(block_id)
+                    .expect("Received a block that doesn't exist!");
+                node.get::<NakamotoNodeState>().register_block(block_header);
+            }
+        }
         self.flooding
             .handle_message(node, underlay_message, message_payload)
     }
 
     fn handle_poke(&self, mut node: NodeInterface) -> Result<(), Box<dyn Error>> {
         node.log("Got poked by god, so I found a new block!");
-        let tip_hash = node.get::<NakamotoNodeState>().tip;
-        let block = Block::new(tip_hash, &mut node.rng());
-        node.get::<NakamotoNodeState>().register_block(block);
-        SimpleFlooding::flood(&mut node, block);
+        let tip = node.get::<NakamotoNodeState>().tip;
+        let block_header = node.spawn_block(tip, []);
+        node.get::<NakamotoNodeState>().register_block(block_header);
+        SimpleFlooding::flood(&mut node, InventoryItem::Block(block_header.id));
         Ok(())
     }
 
@@ -46,69 +62,50 @@ impl Protocol for NakamotoConsensus {
     ) -> Result<(), Box<dyn Error>> {
         match update {
             PeerSetUpdate::PeerAdded(peer) => {
-                let all_blocks_sorted = node.get::<NakamotoNodeState>().all_blocks_sorted();
-                SimpleFlooding::flood_peer_with(&mut node, peer, all_blocks_sorted)
+                let all_blocks_sorted = node.get::<NakamotoNodeState>().known_blocks_sorted();
+                SimpleFlooding::<InventoryItem>::flood_peer_with(
+                    &mut node,
+                    peer,
+                    all_blocks_sorted.into_iter().map(InventoryItem::Block),
+                )
             }
             PeerSetUpdate::PeerRemoved(peer) => {
-                SimpleFlooding::<Block>::forget_peer(&mut node, peer)
+                SimpleFlooding::<InventoryItem>::forget_peer(&mut node, peer)
             }
         };
         Ok(())
     }
 }
 
-#[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Hash)]
-pub struct Block {
-    hash: Hash,
-    hash_prev: Hash,
-}
-impl Block {
-    pub fn new(hash_prev: Hash, rng: &mut impl Rng) -> Self {
-        let mut hash = Hash::default();
-        rng.fill_bytes(&mut hash);
-        Self { hash, hash_prev }
-    }
-    pub fn hash(&self) -> Hash {
-        self.hash
-    }
-}
-
-pub type Hash = [u8; 32]; // 256 bit
-
-pub fn to_number(hash: Hash) -> u32 {
-    let mut result: u32 = 0;
-    for i in 0..4 {
-        result += (hash[0] as u32) * 2u32.pow(i);
-    }
-    result
-}
-
 #[derive(Debug, Clone, Default)]
 pub struct NakamotoNodeState {
-    all_blocks: HashMap<Hash, (usize, Block)>,
-    tip: Hash,
-    fork_tips: HashSet<Hash>,
+    known_blocks: HashMap<Entity, BlockHeader>,
+    tip: Option<Entity>,
+    fork_tips: HashSet<Entity>,
 }
 impl NakamotoNodeState {
-    fn register_block(&mut self, block: Block) -> bool {
-        if self.all_blocks.contains_key(&block.hash) {
+    /// Returns `true` if we have updated the tip of the blockchain.
+    fn register_block(&mut self, block: BlockHeader) -> bool {
+        // Our simple logic here assumes that blocks always arrive in the same order.
+        // Making this better might be a TODO.
+        if self.known_blocks.contains_key(&block.id) {
             false
-        } else if block.hash_prev == self.tip {
-            self.all_blocks
-                .insert(block.hash, (self.height(self.tip) + 1, block));
-            self.tip = block.hash;
+        } else if block.id_prev == self.tip {
+            self.known_blocks.insert(block.id, block);
+            self.tip = Some(block.id);
             true
-        } else if block.hash_prev == Hash::default()
-            || self.all_blocks.contains_key(&block.hash_prev)
-        {
-            self.all_blocks
-                .insert(block.hash, (self.height(block.hash_prev) + 1, block));
-            self.fork_tips.remove(&block.hash_prev); // can very well fail
-            self.fork_tips.insert(block.hash);
-            if self.height(block.hash) > self.height(self.tip) {
-                let old_tip = self.tip;
-                self.tip = block.hash;
-                self.fork_tips.remove(&block.hash);
+        } else if block.id_prev == None {
+            self.known_blocks.insert(block.id, block);
+            self.fork_tips.insert(block.id);
+            false
+        } else if self.known_blocks.contains_key(&block.id_prev.unwrap()) {
+            self.known_blocks.insert(block.id, block);
+            self.fork_tips.remove(&block.id_prev.unwrap()); // will do nothing if it's a new fork
+            self.fork_tips.insert(block.id);
+            if block.height > self.tip_height() {
+                let old_tip = self.tip.unwrap();
+                self.tip = Some(block.id);
+                self.fork_tips.remove(&block.id);
                 self.fork_tips.insert(old_tip);
                 true
             } else {
@@ -118,26 +115,36 @@ impl NakamotoNodeState {
             false
         }
     }
-    pub fn tip(&self) -> Hash {
+    pub fn block_header(&self, block_id: Entity) -> Option<BlockHeader> {
+        self.known_blocks.get(&block_id).copied()
+    }
+    pub fn tip(&self) -> Option<Entity> {
         self.tip
     }
-    pub fn fork_tips(&self) -> &HashSet<Hash> {
+    pub fn fork_tips(&self) -> &HashSet<Entity> {
         &self.fork_tips
     }
-    pub fn height(&self, block_hash: Hash) -> usize {
-        if block_hash == Hash::default() {
-            0 // "genesis block"
+    pub fn height(&self, block_id: Option<Entity>) -> usize {
+        if let Some(block_id) = block_id {
+            self.known_blocks
+                .get(&block_id)
+                .expect("Requested height of unknown block.")
+                .height
         } else {
-            self.all_blocks.get(&block_hash).expect("Unkown block?!").0
+            0
         }
     }
-    pub fn hash_prev(&self, block_hash: Hash) -> Option<Hash> {
-        self.all_blocks.get(&block_hash).map(|b| b.1.hash_prev)
+    pub fn tip_height(&self) -> usize {
+        self.height(self.tip)
     }
-    /// Returns all stored blocks (forks included) sorted by their block height, smallest heights
-    /// first.
-    pub fn all_blocks_sorted(&self) -> Vec<Block> {
-        let mut blocks_heights: Vec<(usize, Block)> = self.all_blocks.values().cloned().collect();
+    /// Returns the ids of all known blocks (forks included) sorted by their block height,
+    /// smallest heights first.
+    pub fn known_blocks_sorted(&self) -> Vec<Entity> {
+        let mut blocks_heights: Vec<(usize, Entity)> = self
+            .known_blocks
+            .iter()
+            .map(|(&block_id, &block)| (block.height, block_id))
+            .collect();
         blocks_heights.sort_by(|a, b| a.0.cmp(&b.0));
         blocks_heights.into_iter().map(|(_, block)| block).collect()
     }
@@ -238,7 +245,7 @@ mod tests {
             .into_iter()
             .next()
             .expect("No forks registered?!");
-        assert_eq!(fork_tip_1, state3.tip);
+        assert_eq!(fork_tip_1, state3.tip.unwrap());
     }
 
     #[wasm_bindgen_test]
@@ -307,19 +314,21 @@ mod tests {
             .expect("No relevant node state stored?")
             .clone();
 
-        let mut remaining_blocks = state.all_blocks.clone();
+        let mut remaining_blocks = state.known_blocks.clone();
 
         let mut queue = vec![state.tip];
-        queue.extend(state.fork_tips.clone().into_iter());
+        queue.extend(state.fork_tips.clone().into_iter().map(|id| Some(id)));
 
         while !queue.is_empty() {
-            let block_hash = queue.pop().unwrap();
-            if !state.all_blocks.contains_key(&block_hash) && block_hash != Hash::default() {
-                panic!("Block not connected to genesis hash!");
-            }
-            if let Entry::Occupied(block_entry) = remaining_blocks.entry(block_hash) {
-                queue.push(block_entry.get().1.hash_prev);
-                block_entry.remove();
+            let block_id = queue.pop().unwrap();
+            if let Some(block_id) = block_id {
+                if !state.known_blocks.contains_key(&block_id) {
+                    panic!("Block not connected to genesis hash!");
+                }
+                if let Entry::Occupied(block_entry) = remaining_blocks.entry(block_id) {
+                    queue.push(block_entry.get().id_prev);
+                    block_entry.remove();
+                }
             }
         }
         assert!(remaining_blocks.is_empty());
