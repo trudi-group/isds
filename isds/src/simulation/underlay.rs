@@ -11,6 +11,28 @@ impl Command for SpawnRandomNodes {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ForRandomNode<A: EntityAction>(pub A);
+impl<A: EntityAction> Command for ForRandomNode<A> {
+    fn execute(&self, sim: &mut Simulation) -> Result<(), Box<dyn Error>> {
+        let node = sim
+            .pick_random_node()
+            .ok_or_else(|| "Not enough nodes?".to_string())?;
+        self.0.execute_for(sim, node)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ForEachNode<A: EntityAction>(pub A);
+impl<A: EntityAction> Command for ForEachNode<A> {
+    fn execute(&self, sim: &mut Simulation) -> Result<(), Box<dyn Error>> {
+        for &node in sim.all_nodes().iter() {
+            self.0.execute_for(sim, node)?;
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct UnderlayConfig {
     width: f32,

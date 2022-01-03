@@ -22,10 +22,10 @@ impl<T: Payload> Default for SimpleFlooding<T> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct StartSimpleFlooding<T: Payload + Default + Hash + Eq>(pub Entity, pub T);
-impl<T: Payload + Default + Hash + Eq> Command for StartSimpleFlooding<T> {
-    fn execute(&self, sim: &mut Simulation) -> Result<(), Box<dyn Error>> {
-        SimpleFlooding::flood(&mut sim.node_interface(self.0), self.1.clone());
+pub struct Flood<T: Payload + Default + std::fmt::Debug + Hash + Eq>(pub T);
+impl<T: Payload + Default + std::fmt::Debug + Hash + Eq> EntityAction for Flood<T> {
+    fn execute_for(&self, sim: &mut Simulation, entity: Entity) -> Result<(), Box<dyn Error>> {
+        SimpleFlooding::flood(&mut sim.node_interface(entity), self.0.clone());
         Ok(())
     }
 }

@@ -1,4 +1,4 @@
-use isds::{log, PokeRandomNode, SharedSimulation};
+use isds::{log, SharedSimulation};
 use wasm_bindgen::JsCast;
 use yew::prelude::*;
 
@@ -65,7 +65,7 @@ fn init_keyboard_listener(sim: SharedSimulation) -> gloo::events::EventListener 
             " " => sim.borrow_mut().time.toggle_paused(),
             "ArrowLeft" => sim.borrow_mut().time.slow_down_tenfold_clamped(),
             "ArrowRight" => sim.borrow_mut().time.speed_up_tenfold_clamped(),
-            "m" => sim.borrow_mut().do_now(PokeRandomNode),
+            "m" => sim.borrow_mut().do_now(isds::ForRandomNode(isds::PokeNode)),
             _ => log!("Unmapped key pressed: {:?}", e),
         }
     })
@@ -76,7 +76,7 @@ fn init_simulation() -> isds::Simulation {
     sim.add_event_handler(isds::InvokeProtocolForAllNodes(
         isds::nakamoto_consensus::NakamotoConsensus::default(),
     ));
-    sim.do_now(isds::StartAutomaticRandomNodePokes(2.));
+    sim.do_now(isds::AtRandomIntervals::new(isds::ForRandomNode(isds::PokeNode), isds::SimSeconds::from(2.)));
     sim.do_now(isds::SpawnRandomNodes(16));
     sim.do_now(isds::MakeDelaunayNetwork);
     sim

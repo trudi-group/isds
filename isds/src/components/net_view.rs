@@ -1,7 +1,5 @@
 use super::*;
 
-use blockchain_types::BlockHeader;
-
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 
@@ -85,7 +83,7 @@ impl Component for NetView {
             Msg::NodeClick(node) => {
                 // TODO perhaps configure node click action using a property?
                 log!(format!("Click on {}", self.sim.borrow().name(node)));
-                self.sim.borrow_mut().do_now(PokeNode(node));
+                self.sim.borrow_mut().do_now(PokeSpecificNode(node));
                 false
             }
             Msg::LinkClick(node1, node2) => {

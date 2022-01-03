@@ -171,7 +171,7 @@ mod tests {
         sim.add_peer(node2, node3);
         sim.add_peer(node3, node2);
 
-        sim.do_now(PokeNode(node1));
+        sim.do_now(PokeSpecificNode(node1));
         sim.catch_up(100.);
 
         let state1 = sim
@@ -215,11 +215,11 @@ mod tests {
         sim.add_peer(node2, node3);
         sim.add_peer(node3, node2);
 
-        sim.do_now(PokeNode(node1));
+        sim.do_now(PokeSpecificNode(node1));
         sim.catch_up(100.);
 
-        sim.do_now(PokeNode(node1));
-        sim.do_now(PokeNode(node3));
+        sim.do_now(PokeSpecificNode(node1));
+        sim.do_now(PokeSpecificNode(node3));
         sim.catch_up(100.);
 
         let state1 = sim
@@ -261,14 +261,14 @@ mod tests {
         sim.add_peer(node2, node3);
         sim.add_peer(node3, node2);
 
-        sim.do_now(PokeNode(node1));
+        sim.do_now(PokeSpecificNode(node1));
         sim.catch_up(100.);
 
-        sim.do_now(PokeNode(node1));
-        sim.do_now(PokeNode(node3));
+        sim.do_now(PokeSpecificNode(node1));
+        sim.do_now(PokeSpecificNode(node3));
         sim.catch_up(100.);
 
-        sim.do_now(PokeNode(node1));
+        sim.do_now(PokeSpecificNode(node1));
         sim.catch_up(100.);
 
         let state1 = sim
@@ -301,7 +301,7 @@ mod tests {
         sim.catch_up(1.);
 
         for _ in 0..20 {
-            sim.do_now(PokeMultipleRandomNodes(1));
+            sim.do_now(ForRandomNode(PokeNode));
             sim.catch_up(100.);
         }
 
@@ -342,12 +342,12 @@ mod tests {
         let node1 = sim.spawn_random_node();
         let node2 = sim.spawn_random_node();
 
-        sim.do_now(PokeNode(node1));
-        sim.do_now(PokeNode(node1));
-        sim.do_now(PokeNode(node1));
+        sim.do_now(PokeSpecificNode(node1));
+        sim.do_now(PokeSpecificNode(node1));
+        sim.do_now(PokeSpecificNode(node1));
 
-        sim.do_now(PokeNode(node2));
-        sim.do_now(PokeNode(node2));
+        sim.do_now(PokeSpecificNode(node2));
+        sim.do_now(PokeSpecificNode(node2));
 
         sim.catch_up(10.);
 

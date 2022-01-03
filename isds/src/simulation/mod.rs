@@ -17,7 +17,6 @@ mod event_queue;
 mod logger;
 mod node_interface;
 mod peers;
-mod pokes;
 mod protocol;
 mod shared;
 mod time;
@@ -25,16 +24,17 @@ mod underlay;
 
 use despawner::Despawner;
 
-pub use command::Command;
+pub use command::{
+    AtRandomIntervals, AtStaticIntervals, Command, EntityAction, ForSpecific, MultipleTimes,
+};
 pub use event_queue::EventQueue;
 pub use logger::Logger;
 pub use node_interface::{blockchain_types, NodeInterface};
-pub use protocol::{InvokeProtocolForAllNodes, Payload, Protocol};
+pub use protocol::{InvokeProtocolForAllNodes, Payload, PokeNode, PokeSpecificNode, Protocol};
 pub use shared::*;
 pub use time::{OrderedFloat, RealSeconds, SimSeconds, Time, TimeSpan};
 
 pub use peers::*;
-pub use pokes::*;
 pub use underlay::*;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
