@@ -14,16 +14,40 @@ pub struct BlockHeader {
     pub height: usize,
 }
 
-type BlockContents = BTreeSet<Entity>;
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct BlockContents(BTreeSet<Entity>);
+impl BlockContents {
+    pub fn new() -> Self {
+        Self(BTreeSet::new())
+    }
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+impl FromIterator<Entity> for BlockContents {
+    fn from_iter<T: IntoIterator<Item = Entity>>(iter: T) -> Self {
+        Self(BTreeSet::from_iter(iter))
+    }
+}
+impl IntoIterator for BlockContents {
+    type Item = Entity;
+    type IntoIter = std::collections::btree_set::IntoIter<Entity>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Transaction {
-    from: Address,
-    to: Address,
-    amount: u32,
+    pub from: Address,
+    pub to: Address,
+    pub amount: u32,
 }
 
-type Address = String;
+pub type Address = String;
 
 impl<'a> NodeInterface<'a> {
     /// Registers a transaction in the global database, where it is immutable via the node

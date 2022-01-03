@@ -55,7 +55,10 @@ fn init_simulation() -> isds::Simulation {
         // random_walks::RandomWalks::new(1024),
         isds::nakamoto_consensus::NakamotoConsensus::default(),
     ));
-    sim.do_now(isds::AtRandomIntervals::new(isds::ForRandomNode(isds::PokeNode), isds::SimSeconds::from(2.)));
+    sim.do_now(isds::AtRandomIntervals::new(
+        isds::ForRandomNode(isds::PokeNode),
+        isds::SimSeconds::from(2.),
+    ));
     sim.do_now(isds::SpawnRandomNodes(32));
     sim.do_now(isds::MakeDelaunayNetwork);
     sim

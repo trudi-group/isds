@@ -1,8 +1,42 @@
 use super::*;
 use simple_flooding::*;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 use blockchain_types::*;
+
+#[derive(Debug, Clone)]
+pub struct BuildAndBroadcastTransaction {
+    from: Address,
+    to: Address,
+    amount: u32,
+}
+impl BuildAndBroadcastTransaction {
+    pub fn new(from: &str, to: &str, amount: u32) -> Self {
+        let from = from.to_string();
+        let to = to.to_string();
+        Self { from, to, amount }
+    }
+}
+impl EntityAction for BuildAndBroadcastTransaction {
+    fn execute_for(&self, sim: &mut Simulation, entity: Entity) -> Result<(), Box<dyn Error>> {
+        let mut node = sim.node_interface(entity);
+        NakamotoConsensus::handle_new_transaction(
+            &mut node,
+            self.from.clone(),
+            self.to.clone(),
+            self.amount,
+        )
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MineBlock;
+impl EntityAction for MineBlock {
+    fn execute_for(&self, sim: &mut Simulation, entity: Entity) -> Result<(), Box<dyn Error>> {
+        let mut node = sim.node_interface(entity);
+        NakamotoConsensus::handle_mining_success(&mut node)
+    }
+}
 
 #[derive(Debug, Default)]
 pub struct NakamotoConsensus {
@@ -13,6 +47,66 @@ impl NakamotoConsensus {
         Self {
             flooding: SimpleFlooding::new(),
         }
+    }
+    fn handle_transaction(node: &mut NodeInterface, tx_id: Entity) -> Result<(), Box<dyn Error>> {
+        node.get::<NakamotoNodeState>()
+            .register_transaction_id(tx_id);
+        Ok(())
+    }
+    fn handle_block(node: &mut NodeInterface, block_id: Entity) -> Result<(), Box<dyn Error>> {
+        let (&block_header, block_contents) = node
+            .get_block(block_id)
+            .ok_or("Received a block that doesn't exist!")?;
+        let block_contents = block_contents.clone();
+        node.get::<NakamotoNodeState>()
+            .register_block(block_header, block_contents);
+        Ok(())
+    }
+    fn handle_new_transaction(
+        node: &mut NodeInterface,
+        from: Address,
+        to: Address,
+        amount: u32,
+    ) -> Result<(), Box<dyn Error>> {
+        node.log(&format!(
+            "Building new transaction: {} coins from {} to {}.",
+            amount, from, to
+        ));
+        let tx_id = node.spawn_transaction(from, to, amount);
+        node.get::<NakamotoNodeState>()
+            .register_transaction_id(tx_id);
+        SimpleFlooding::flood(node, InventoryItem::Transaction(tx_id));
+        Ok(())
+    }
+    fn handle_mining_success(node: &mut NodeInterface) -> Result<(), Box<dyn Error>> {
+        let tip = node.get::<NakamotoNodeState>().tip;
+        let contents = node
+            .get::<NakamotoNodeState>()
+            .drain_unconfirmed_transactions();
+        let block_header = node.spawn_block(tip, contents);
+        let block_contents = node.get_block_contents(block_header.id).unwrap().clone();
+        node.log(&format!(
+            "Mined a new block of height {} that contains {} transactions.",
+            block_header.height,
+            block_contents.len()
+        ));
+        node.get::<NakamotoNodeState>()
+            .register_block(block_header, block_contents);
+        SimpleFlooding::flood(node, InventoryItem::Block(block_header.id));
+        Ok(())
+    }
+    fn handle_peer_removed(mut node: NodeInterface, peer: Entity) -> Result<(), Box<dyn Error>> {
+        SimpleFlooding::<InventoryItem>::forget_peer(&mut node, peer);
+        Ok(())
+    }
+    fn handle_peer_added(node: &mut NodeInterface, peer: Entity) -> Result<(), Box<dyn Error>> {
+        let all_blocks_sorted = node.get::<NakamotoNodeState>().known_blocks_sorted();
+        SimpleFlooding::<InventoryItem>::flood_peer_with(
+            node,
+            peer,
+            all_blocks_sorted.into_iter().map(InventoryItem::Block),
+        );
+        Ok(())
     }
 }
 
@@ -32,14 +126,11 @@ impl Protocol for NakamotoConsensus {
         message_payload: Self::MessagePayload,
     ) -> Result<(), Box<dyn Error>> {
         match message_payload.0 {
-            InventoryItem::Transaction(_) => {
-                todo!();
+            InventoryItem::Transaction(tx_id) => {
+                Self::handle_transaction(&mut node, tx_id)?;
             }
             InventoryItem::Block(block_id) => {
-                let block_header = *node
-                    .get_block_header(block_id)
-                    .expect("Received a block that doesn't exist!");
-                node.get::<NakamotoNodeState>().register_block(block_header);
+                Self::handle_block(&mut node, block_id)?;
             }
         }
         self.flooding
@@ -47,12 +138,7 @@ impl Protocol for NakamotoConsensus {
     }
 
     fn handle_poke(&self, mut node: NodeInterface) -> Result<(), Box<dyn Error>> {
-        node.log("Got poked by god, so I found a new block!");
-        let tip = node.get::<NakamotoNodeState>().tip;
-        let block_header = node.spawn_block(tip, []);
-        node.get::<NakamotoNodeState>().register_block(block_header);
-        SimpleFlooding::flood(&mut node, InventoryItem::Block(block_header.id));
-        Ok(())
+        Self::handle_mining_success(&mut node)
     }
 
     fn handle_peer_set_update(
@@ -62,15 +148,10 @@ impl Protocol for NakamotoConsensus {
     ) -> Result<(), Box<dyn Error>> {
         match update {
             PeerSetUpdate::PeerAdded(peer) => {
-                let all_blocks_sorted = node.get::<NakamotoNodeState>().known_blocks_sorted();
-                SimpleFlooding::<InventoryItem>::flood_peer_with(
-                    &mut node,
-                    peer,
-                    all_blocks_sorted.into_iter().map(InventoryItem::Block),
-                )
+                Self::handle_peer_added(&mut node, peer)?;
             }
             PeerSetUpdate::PeerRemoved(peer) => {
-                SimpleFlooding::<InventoryItem>::forget_peer(&mut node, peer)
+                Self::handle_peer_removed(node, peer)?;
             }
         };
         Ok(())
@@ -82,30 +163,32 @@ pub struct NakamotoNodeState {
     known_blocks: HashMap<Entity, BlockHeader>,
     tip: Option<Entity>,
     fork_tips: HashSet<Entity>,
+    txes_unconfirmed: BTreeSet<Entity>,
+    txes_confirmed: HashSet<Entity>,
 }
 impl NakamotoNodeState {
     /// Returns `true` if we have updated the tip of the blockchain.
-    fn register_block(&mut self, block: BlockHeader) -> bool {
+    fn register_block(&mut self, header: BlockHeader, contents: BlockContents) -> bool {
         // Our simple logic here assumes that blocks always arrive in the same order.
         // Making this better might be a TODO.
-        if self.known_blocks.contains_key(&block.id) {
+        if self.known_blocks.contains_key(&header.id) {
             false
-        } else if block.id_prev == self.tip {
-            self.known_blocks.insert(block.id, block);
-            self.tip = Some(block.id);
+        } else if header.id_prev == self.tip {
+            self.known_blocks.insert(header.id, header);
+            self.register_new_tip(header.id, contents);
             true
-        } else if block.id_prev == None {
-            self.known_blocks.insert(block.id, block);
-            self.fork_tips.insert(block.id);
+        } else if header.id_prev == None {
+            self.known_blocks.insert(header.id, header);
+            self.fork_tips.insert(header.id);
             false
-        } else if self.known_blocks.contains_key(&block.id_prev.unwrap()) {
-            self.known_blocks.insert(block.id, block);
-            self.fork_tips.remove(&block.id_prev.unwrap()); // will do nothing if it's a new fork
-            self.fork_tips.insert(block.id);
-            if block.height > self.tip_height() {
+        } else if self.known_blocks.contains_key(&header.id_prev.unwrap()) {
+            self.known_blocks.insert(header.id, header);
+            self.fork_tips.remove(&header.id_prev.unwrap()); // will do nothing if it's a new fork
+            self.fork_tips.insert(header.id);
+            if header.height > self.tip_height() {
                 let old_tip = self.tip.unwrap();
-                self.tip = Some(block.id);
-                self.fork_tips.remove(&block.id);
+                self.register_new_tip(header.id, contents);
+                self.fork_tips.remove(&header.id);
                 self.fork_tips.insert(old_tip);
                 true
             } else {
@@ -114,6 +197,21 @@ impl NakamotoNodeState {
         } else {
             false
         }
+    }
+    fn register_new_tip(&mut self, block_id: Entity, block_contents: BlockContents) {
+        self.tip = Some(block_id);
+        for txid in block_contents.into_iter() {
+            self.txes_unconfirmed.remove(&txid);
+            self.txes_confirmed.insert(txid);
+        }
+    }
+    fn register_transaction_id(&mut self, tx_id: Entity) {
+        self.txes_unconfirmed.insert(tx_id);
+    }
+    fn drain_unconfirmed_transactions(&mut self) -> impl IntoIterator<Item = Entity> {
+        let mut tmp = BTreeSet::new();
+        std::mem::swap(&mut self.txes_unconfirmed, &mut tmp);
+        tmp
     }
     pub fn block_header(&self, block_id: Entity) -> Option<BlockHeader> {
         self.known_blocks.get(&block_id).copied()
@@ -148,6 +246,9 @@ impl NakamotoNodeState {
         blocks_heights.sort_by(|a, b| a.0.cmp(&b.0));
         blocks_heights.into_iter().map(|(_, block)| block).collect()
     }
+    pub fn txes_unconfirmed(&self) -> &BTreeSet<Entity> {
+        &self.txes_unconfirmed
+    }
 }
 
 #[cfg(test)]
@@ -157,6 +258,15 @@ mod tests {
     use wasm_bindgen_test::*;
 
     wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
+
+    fn get_state(sim: &Simulation, node_id: Entity) -> NakamotoNodeState {
+        sim.world
+            .query_one::<&NakamotoNodeState>(node_id)
+            .unwrap()
+            .get()
+            .expect("No relevant node state stored?")
+            .clone()
+    }
 
     #[wasm_bindgen_test]
     fn blocks_get_distributed() {
@@ -171,35 +281,81 @@ mod tests {
         sim.add_peer(node2, node3);
         sim.add_peer(node3, node2);
 
-        sim.do_now(PokeSpecificNode(node1));
+        sim.do_now(ForSpecific(node1, MineBlock));
         sim.catch_up(100.);
 
-        let state1 = sim
-            .world
-            .query_one::<&NakamotoNodeState>(node1)
-            .unwrap()
-            .get()
-            .expect("No relevant node state stored?")
-            .clone();
-
-        let state2 = sim
-            .world
-            .query_one::<&NakamotoNodeState>(node2)
-            .unwrap()
-            .get()
-            .expect("No relevant node state stored?")
-            .clone();
-
-        let state3 = sim
-            .world
-            .query_one::<&NakamotoNodeState>(node3)
-            .unwrap()
-            .get()
-            .expect("No relevant node state stored?")
-            .clone();
+        let state1 = get_state(&mut sim, node1);
+        let state2 = get_state(&mut sim, node2);
+        let state3 = get_state(&mut sim, node3);
 
         assert_eq!(state1.tip, state2.tip);
         assert_eq!(state1.tip, state3.tip);
+    }
+
+    #[wasm_bindgen_test]
+    fn transactions_get_distributed() {
+        let mut sim = Simulation::new();
+        sim.add_event_handler(InvokeProtocolForAllNodes(NakamotoConsensus::default()));
+
+        let node1 = sim.spawn_random_node();
+        let node2 = sim.spawn_random_node();
+        let node3 = sim.spawn_random_node();
+        sim.add_peer(node1, node2);
+        sim.add_peer(node2, node1);
+        sim.add_peer(node2, node3);
+        sim.add_peer(node3, node2);
+
+        sim.do_now(ForSpecific(
+            node1,
+            BuildAndBroadcastTransaction::new("Alice", "Bob", 32),
+        ));
+        sim.catch_up(100.);
+
+        let state1 = get_state(&mut sim, node1);
+        let state2 = get_state(&mut sim, node2);
+        let state3 = get_state(&mut sim, node3);
+
+        assert!(!state1.txes_unconfirmed.is_empty());
+        assert_eq!(state1.txes_unconfirmed, state2.txes_unconfirmed);
+        assert_eq!(state1.txes_unconfirmed, state3.txes_unconfirmed);
+    }
+
+    #[wasm_bindgen_test]
+    fn transactions_end_up_in_blocks() {
+        let mut sim = Simulation::new();
+        sim.add_event_handler(InvokeProtocolForAllNodes(NakamotoConsensus::default()));
+
+        let node1 = sim.spawn_random_node();
+        let node2 = sim.spawn_random_node();
+        sim.add_peer(node1, node2);
+        sim.add_peer(node2, node1);
+
+        sim.do_now(ForSpecific(
+            node1,
+            BuildAndBroadcastTransaction::new("Alice", "Bob", 32),
+        ));
+        sim.catch_up(100.);
+
+        sim.do_now(ForSpecific(node2, MineBlock));
+        sim.catch_up(100.);
+
+        let state1 = get_state(&mut sim, node1);
+        let state2 = get_state(&mut sim, node2);
+
+        assert!(state1.txes_unconfirmed.is_empty());
+        assert!(state2.txes_unconfirmed.is_empty());
+        assert!(!state1.txes_confirmed.is_empty());
+
+        let block_id = state1.tip().unwrap();
+        let block_contents = sim
+            .world
+            .query_one::<&BlockContents>(block_id)
+            .unwrap()
+            .get()
+            .expect("Block contents do not exist?")
+            .clone();
+
+        assert!(block_contents.len() == 1);
     }
 
     #[wasm_bindgen_test]
@@ -215,28 +371,15 @@ mod tests {
         sim.add_peer(node2, node3);
         sim.add_peer(node3, node2);
 
-        sim.do_now(PokeSpecificNode(node1));
+        sim.do_now(ForSpecific(node1, MineBlock));
         sim.catch_up(100.);
 
-        sim.do_now(PokeSpecificNode(node1));
-        sim.do_now(PokeSpecificNode(node3));
+        sim.do_now(ForSpecific(node1, MineBlock));
+        sim.do_now(ForSpecific(node3, MineBlock));
         sim.catch_up(100.);
 
-        let state1 = sim
-            .world
-            .query_one::<&NakamotoNodeState>(node1)
-            .unwrap()
-            .get()
-            .expect("No relevant node state stored?")
-            .clone();
-
-        let state3 = sim
-            .world
-            .query_one::<&NakamotoNodeState>(node3)
-            .unwrap()
-            .get()
-            .expect("No relevant node state stored?")
-            .clone();
+        let state1 = get_state(&mut sim, node1);
+        let state3 = get_state(&mut sim, node3);
 
         assert_ne!(state1.tip, state3.tip);
 
@@ -261,31 +404,18 @@ mod tests {
         sim.add_peer(node2, node3);
         sim.add_peer(node3, node2);
 
-        sim.do_now(PokeSpecificNode(node1));
+        sim.do_now(ForSpecific(node1, MineBlock));
         sim.catch_up(100.);
 
-        sim.do_now(PokeSpecificNode(node1));
-        sim.do_now(PokeSpecificNode(node3));
+        sim.do_now(ForSpecific(node1, MineBlock));
+        sim.do_now(ForSpecific(node3, MineBlock));
         sim.catch_up(100.);
 
-        sim.do_now(PokeSpecificNode(node1));
+        sim.do_now(ForSpecific(node1, MineBlock));
         sim.catch_up(100.);
 
-        let state1 = sim
-            .world
-            .query_one::<&NakamotoNodeState>(node1)
-            .unwrap()
-            .get()
-            .expect("No relevant node state stored?")
-            .clone();
-
-        let state3 = sim
-            .world
-            .query_one::<&NakamotoNodeState>(node3)
-            .unwrap()
-            .get()
-            .expect("No relevant node state stored?")
-            .clone();
+        let state1 = get_state(&mut sim, node1);
+        let state3 = get_state(&mut sim, node3);
 
         assert_eq!(state1.tip, state3.tip);
     }
@@ -301,18 +431,12 @@ mod tests {
         sim.catch_up(1.);
 
         for _ in 0..20 {
-            sim.do_now(ForRandomNode(PokeNode));
+            sim.do_now(ForRandomNode(MineBlock));
             sim.catch_up(100.);
         }
 
         let tested_node = sim.pick_random_node().unwrap();
-        let state = sim
-            .world
-            .query_one::<&NakamotoNodeState>(tested_node)
-            .unwrap()
-            .get()
-            .expect("No relevant node state stored?")
-            .clone();
+        let state = get_state(&mut sim, tested_node);
 
         let mut remaining_blocks = state.known_blocks.clone();
 
@@ -342,12 +466,12 @@ mod tests {
         let node1 = sim.spawn_random_node();
         let node2 = sim.spawn_random_node();
 
-        sim.do_now(PokeSpecificNode(node1));
-        sim.do_now(PokeSpecificNode(node1));
-        sim.do_now(PokeSpecificNode(node1));
+        sim.do_now(ForSpecific(node1, MineBlock));
+        sim.do_now(ForSpecific(node1, MineBlock));
+        sim.do_now(ForSpecific(node1, MineBlock));
 
-        sim.do_now(PokeSpecificNode(node2));
-        sim.do_now(PokeSpecificNode(node2));
+        sim.do_now(ForSpecific(node2, MineBlock));
+        sim.do_now(ForSpecific(node2, MineBlock));
 
         sim.catch_up(10.);
 
@@ -356,21 +480,8 @@ mod tests {
 
         sim.catch_up(10.);
 
-        let state1 = sim
-            .world
-            .query_one::<&NakamotoNodeState>(node1)
-            .unwrap()
-            .get()
-            .expect("No relevant node state stored?")
-            .clone();
-
-        let state2 = sim
-            .world
-            .query_one::<&NakamotoNodeState>(node2)
-            .unwrap()
-            .get()
-            .expect("No relevant node state stored?")
-            .clone();
+        let state1 = get_state(&mut sim, node1);
+        let state2 = get_state(&mut sim, node2);
 
         assert_eq!(state1.height(state1.tip), state2.height(state2.tip));
         assert_eq!(state1.tip, state2.tip);

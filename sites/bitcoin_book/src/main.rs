@@ -4,6 +4,7 @@ use yew::prelude::*;
 
 struct BitcoinBook {
     sim: SharedSimulation,
+    wallet_node: isds::Entity,
     _key_listener: gloo::events::EventListener,
 }
 
@@ -13,8 +14,13 @@ impl Component for BitcoinBook {
 
     fn create(_: &Context<Self>) -> Self {
         let sim = init_simulation().into_shared();
+        let wallet_node = sim.borrow_mut().pick_random_node().unwrap();
         let _key_listener = init_keyboard_listener(sim.clone());
-        Self { sim, _key_listener }
+        Self {
+            sim,
+            wallet_node,
+            _key_listener,
+        }
     }
 
     fn view(&self, _: &Context<Self>) -> Html {
@@ -37,7 +43,7 @@ impl Component for BitcoinBook {
                     <div class="columns">
                         <div class="box column">
                             <isds::Isds sim={ self.sim.clone() }>
-                                <isds::Wallet />
+                                <isds::Wallet full_node={ Some(self.wallet_node) }/>
                                     <div class="is-flex">
                                         <isds::TimeUi />
                                         <div class="mx-1 p-1">
@@ -76,9 +82,19 @@ fn init_simulation() -> isds::Simulation {
     sim.add_event_handler(isds::InvokeProtocolForAllNodes(
         isds::nakamoto_consensus::NakamotoConsensus::default(),
     ));
-    sim.do_now(isds::AtRandomIntervals::new(isds::ForRandomNode(isds::PokeNode), isds::SimSeconds::from(2.)));
-    sim.do_now(isds::SpawnRandomNodes(16));
+    sim.do_now(isds::AtRandomIntervals::new(
+        isds::ForRandomNode(isds::nakamoto_consensus::BuildAndBroadcastTransaction::new(
+            "Alice", "Bob", 1337,
+        )),
+        isds::SimSeconds::from(0.5),
+    ));
+    sim.do_now(isds::AtRandomIntervals::new(
+        isds::ForRandomNode(isds::nakamoto_consensus::MineBlock),
+        isds::SimSeconds::from(2.),
+    ));
+    sim.do_now(isds::SpawnRandomNodes(10));
     sim.do_now(isds::MakeDelaunayNetwork);
+    sim.catch_up(0.0001); // to make sure that some nodes are there
     sim
 }
 

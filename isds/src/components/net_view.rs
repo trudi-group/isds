@@ -199,8 +199,13 @@ impl NetView {
                 let (x, y) = message_position(trajectory, time_span, time_now);
                 match message.0 {
                     nakamoto_consensus::InventoryItem::Transaction(_) => {
-                        todo!();
-                        html! {}
+                        html! {
+                            <circle
+                                cx={ x.to_string() }
+                                cy={ y.to_string() }
+                                r=1
+                            />
+                        }
                     }
                     nakamoto_consensus::InventoryItem::Block(block_id) => {
                         html! {

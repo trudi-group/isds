@@ -10,9 +10,16 @@ pub enum Msg {
     Rendered(RealSeconds),
 }
 
+#[derive(Properties, PartialEq)]
+pub struct Props {
+    #[prop_or_default]
+    pub full_node: Option<Entity>, // TODO: why an Option really?
+                                   // TODO: wallet address to filter by
+}
+
 impl Component for Wallet {
     type Message = Msg;
-    type Properties = ();
+    type Properties = Props;
 
     fn create(ctx: &Context<Self>) -> Self {
         let (context_data, _context_handle) = get_isds_context!(ctx, Self);
@@ -24,7 +31,34 @@ impl Component for Wallet {
         }
     }
 
-    fn view(&self, _: &Context<Self>) -> Html {
+    fn view(&self, ctx: &Context<Self>) -> Html {
+        // TODO: code below is a quick and dirty experiment; needs refactoring
+        // TODO: also scan blocks...
+        let txes_unconfirmed: Vec<blockchain_types::Transaction> = {
+            if let Some(full_node) = ctx.props().full_node {
+                let world = &self.sim.borrow().world;
+                let state = world
+                    .query_one::<&nakamoto_consensus::NakamotoNodeState>(full_node)
+                    .unwrap()
+                    .get()
+                    .unwrap()
+                    .clone();
+                state
+                    .txes_unconfirmed()
+                    .iter()
+                    .map(|&tx_id| {
+                        world
+                            .query_one::<&blockchain_types::Transaction>(tx_id)
+                            .unwrap()
+                            .get()
+                            .unwrap()
+                            .clone()
+                    })
+                    .collect()
+            } else {
+                vec![]
+            }
+        };
         html! {
             <div class="box">
                 <div>
@@ -37,23 +71,29 @@ impl Component for Wallet {
                 </div>
                 <table class="table">
                     <tbody>
-                        <tr>
-                            <td>
-                                <span class="icon is-size-6 has-text-warning">
-                                    { "0/3" }
-                                </span>
-                            </td>
-                            <td>
-                                <span class="has-text-grey-light is-family-code">
-                                    { "1Archive1n2C579dMsAu3iC6tWzuQJz8dN" } // achive.org donation address
-                                </span>
-                            </td>
-                            <td>
-                                <span class="has-text-warning has-text-weight-medium">
-                                    { "-0.3" }
-                                </span>
-                            </td>
-                        </tr>
+                        {
+                            txes_unconfirmed.into_iter().map(|tx| {
+                                html! {
+                                    <tr>
+                                        <td>
+                                            <span class="icon is-size-6 has-text-warning">
+                                                { "0/3" }
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="has-text-grey-light is-family-code">
+                                                { tx.from }
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="has-text-warning has-text-weight-medium">
+                                                { tx.amount as f64 / 10f64.powi(8) }
+                                            </span>
+                                        </td>
+                                    </tr>
+                                }
+                            }).collect::<Html>()
+                        }
                         <tr>
                             <td>
                                 <span class="icon has-text-danger">
@@ -120,3 +160,5 @@ impl Component for Wallet {
         }
     }
 }
+
+// TODO tests? Should be able to peak into the `Html?`
