@@ -26,6 +26,9 @@ impl BlockContents {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
+    pub fn iter(&self) -> std::collections::btree_set::Iter<Entity> {
+        self.0.iter()
+    }
 }
 impl FromIterator<Entity> for BlockContents {
     fn from_iter<T: IntoIterator<Item = Entity>>(iter: T) -> Self {
