@@ -24,3 +24,4 @@ rand_distr = "0.4.1"
 gloo = "0.5"
 getrandom = { version = "0.2", features = ["js"] }
 readonly = "0.2.0"
+web-sys = "0.3.55"

@@ -92,7 +92,7 @@ fn init_simulation() -> isds::Simulation {
     let power_node = sim.pick_random_node().unwrap();
     sim.do_now(isds::ForSpecific(
         power_node,
-        isds::nakamoto_consensus::BuildAndBroadcastTransaction::new(
+        isds::nakamoto_consensus::BuildAndBroadcastTransaction::from(
             "CoinBroker25",
             "Alice",
             isds::blockchain_types::toshis_from(10.) as u64,
@@ -100,7 +100,7 @@ fn init_simulation() -> isds::Simulation {
     ));
     sim.do_now(isds::ForSpecific(
         power_node,
-        isds::nakamoto_consensus::BuildAndBroadcastTransaction::new(
+        isds::nakamoto_consensus::BuildAndBroadcastTransaction::from(
             "Roberts",
             "Alice",
             isds::blockchain_types::toshis_from(15.) as u64,
@@ -115,19 +115,23 @@ fn init_simulation() -> isds::Simulation {
 
     // periodic logic
     sim.do_now(isds::AtRandomIntervals::new(
-        isds::ForRandomNode(isds::nakamoto_consensus::BuildAndBroadcastTransaction::new(
-            "Alice",
-            "Bob",
-            isds::blockchain_types::toshis_from(0.1337) as u64,
-        )),
+        isds::ForRandomNode(
+            isds::nakamoto_consensus::BuildAndBroadcastTransaction::from(
+                "Alice",
+                "Bob",
+                isds::blockchain_types::toshis_from(0.1337) as u64,
+            ),
+        ),
         isds::SimSeconds::from(5.),
     ));
     sim.do_now(isds::AtRandomIntervals::new(
-        isds::ForRandomNode(isds::nakamoto_consensus::BuildAndBroadcastTransaction::new(
-            "Bob",
-            "Alice",
-            isds::blockchain_types::toshis_from(0.42) as u64,
-        )),
+        isds::ForRandomNode(
+            isds::nakamoto_consensus::BuildAndBroadcastTransaction::from(
+                "Bob",
+                "Alice",
+                isds::blockchain_types::toshis_from(0.42) as u64,
+            ),
+        ),
         isds::SimSeconds::from(5.),
     ));
     sim.do_now(isds::AtRandomIntervals::new(

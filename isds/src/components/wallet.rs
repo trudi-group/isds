@@ -3,15 +3,28 @@ use blockchain_types::{coins_from, Address, BlockContents, BlockHeader, Transact
 use nakamoto_consensus::NakamotoNodeState;
 use std::collections::{BTreeSet, VecDeque};
 
+use web_sys::HtmlInputElement;
+
 pub struct Wallet {
     sim: SharedSimulation,
     cache: TransactionsCache,
+    send_modal: SendModalState,
     _context_handle: yew::context::ContextHandle<IsdsContext>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Default)]
+struct SendModalState {
+    active: bool,
+    error_message: Option<String>,
+    to_field_ref: NodeRef,
+    value_field_ref: NodeRef,
+}
+
+#[derive(Debug, Clone)]
 pub enum Msg {
     Rendered(RealSeconds),
+    ToggleSendModal,
+    BroadcastNewTransaction,
 }
 
 #[derive(Properties, PartialEq)]
@@ -36,24 +49,47 @@ impl Component for Wallet {
         Self {
             sim,
             cache,
+            send_modal: Default::default(),
             _context_handle,
         }
     }
 
-    fn view(&self, _: &Context<Self>) -> Html {
+    fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
             <div class="box">
                 { self.view_config_description() }
                 { self.view_balance() }
                 { self.view_transactions() }
-                { self.view_buttons() }
+                { self.view_buttons(ctx) }
+                { self.view_send_modal(ctx) }
             </div>
         }
     }
 
-    fn update(&mut self, _: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::Rendered(_) => self.cache.update(&self.sim.borrow()),
+            Msg::ToggleSendModal => {
+                self.send_modal.toggle();
+                self.send_modal.reset_fields();
+                true
+            }
+            Msg::BroadcastNewTransaction => {
+                match self.parse_send_form(ctx) {
+                    Ok((to, from, value)) => {
+                        self.sim.borrow_mut().do_now(ForSpecific(
+                            ctx.props().full_node.unwrap(), // modal couldn't have been opened if it was `None`
+                            nakamoto_consensus::BuildAndBroadcastTransaction::new(to, from, value),
+                        ));
+                        self.send_modal.toggle();
+                        self.send_modal.reset_fields();
+                    }
+                    Err(msg) => {
+                        self.send_modal.error_message = Some(msg);
+                    }
+                }
+                true
+            }
         }
     }
 
@@ -94,18 +130,22 @@ impl Wallet {
         }
     }
     fn view_transactions(&self) -> Html {
+        let max_columns = 5;
         let relevant_transactions = self.cache.iter_all_transactions_newest_first();
-        let visible_transactions = relevant_transactions.clone().take(5);
-        let value_before = if relevant_transactions.clone().count() > 5 {
-            Some(
-                relevant_transactions
-                    .skip(5)
-                    .map(|(_, tx)| self.cache.value_of(tx))
-                    .sum(),
-            )
-        } else {
-            None
-        };
+        let (visible_transactions, value_before) =
+            if relevant_transactions.clone().count() > max_columns {
+                (
+                    relevant_transactions.clone().take(max_columns - 1),
+                    Some(
+                        relevant_transactions
+                            .skip(5)
+                            .map(|(_, tx)| self.cache.value_of(tx))
+                            .sum(),
+                    ),
+                )
+            } else {
+                (relevant_transactions.clone().take(max_columns), None)
+            };
         html! {
             <table class="table is-fullwidth">
                 <tbody>
@@ -126,6 +166,11 @@ impl Wallet {
                             } else {
                                 "has-text-success"
                             };
+                            let counterpart = if tx.to == self.cache.monitored_address {
+                                &tx.from
+                            } else {
+                                &tx.to
+                            };
                             html! {
                                 <tr>
                                     <td>
@@ -139,7 +184,7 @@ impl Wallet {
                                     </td>
                                     <td>
                                         <span class={classes!("has-text-grey-light", "is-family-code")}>
-                                            { &tx.from }
+                                            { counterpart }
                                         </span>
                                     </td>
                                     <td>
@@ -169,26 +214,120 @@ impl Wallet {
             </table>
         }
     }
-    fn view_buttons(&self) -> Html {
+    fn view_buttons(&self, ctx: &Context<Self>) -> Html {
+        let onclick_send = ctx.link().callback(|_| Msg::ToggleSendModal);
         html! {
-            <div class="buttons">
-                <button class="button">
-                    <span class="icon">
-                        <i class="fas fa-paper-plane fa-rotate-90"></i>
-                    </span>
-                    <span>
-                        { "Request coins" }
-                    </span>
-                </button>
-                <button class="button">
+            <div class="buttons is-centered">
+                <button class="button" onclick={onclick_send} disabled={ ctx.props().full_node.is_none() }>
                     <span>
                         { "Send coins" }
                     </span>
                     <span class="icon">
-                        <i class="fas fa-paper-plane"></i>
+                        <i class="fas fa-paper-plane" />
                     </span>
                 </button>
             </div>
+        }
+    }
+    fn view_send_modal(&self, ctx: &Context<Self>) -> Html {
+        let onclick_broadcast = ctx.link().callback(|_| Msg::BroadcastNewTransaction);
+        let onclick_close = ctx.link().callback(|_| Msg::ToggleSendModal);
+        html! {
+            <div class={ classes!("modal", self.send_modal.active.then(|| Some("is-active"))) } >
+                <div class="modal-background" />
+                <div class="modal-card">
+                    <header class="modal-card-head">
+                        <p class="modal-card-title">{ "New Transaction" }</p>
+                        <button class="delete" aria-label="close" onclick={onclick_close.clone()} />
+                    </header>
+                    <section class="modal-card-body">
+                        if let Some(error_message) = self.send_modal.error_message.as_ref() {
+                            <div class="notification is-danger">
+                                { error_message }
+                            </div>
+                        }
+                        <div class="field is-horizontal">
+                            <div class="field-label is-normal">
+                                <label class="label">{ "From" }</label>
+                            </div>
+                            <div class="field-body">
+                                <input class="input" type="text" value={ ctx.props().address.clone() } readonly={ true } />
+                            </div>
+                        </div>
+                        <div class="field is-horizontal">
+                            <div class="field-label is-normal">
+                                <label class="label">{ "To" }</label>
+                            </div>
+                            <div class="field-body">
+                                <input ref={self.send_modal.to_field_ref.clone()} class="input" type="text" />
+                            </div>
+                        </div>
+                        <div class="field is-horizontal">
+                            <div class="field-label is-normal">
+                                <label class="label">{ "Amount" }</label>
+                            </div>
+                            <div class="field-body">
+                                <div class="field has-addons">
+                                    <div class="control">
+                                        <input ref={self.send_modal.value_field_ref.clone()} class="input" type="number" />
+                                    </div>
+                                    <div class="control">
+                                        <a class="button is-static">
+                                            { "coins" }
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    <footer class="modal-card-foot">
+                        <button class="button is-success" onclick={onclick_broadcast}>{ "Broadcast Transaction" }</button>
+                        <button class="button" onclick={onclick_close}>{ "Cancel" }</button>
+                    </footer>
+                </div>
+            </div>
+        }
+    }
+    fn parse_send_form(&self, ctx: &Context<Self>) -> Result<(Address, Address, u64), String> {
+        let from = ctx.props().address.clone();
+
+        let to = self
+            .send_modal
+            .to_field_ref
+            .cast::<HtmlInputElement>()
+            .map(|ie| ie.value())
+            .map(|v| (!v.is_empty()).then(|| v))
+            .flatten()
+            .ok_or("Invalid \"to\" address.")?;
+
+        let value = self
+            .send_modal
+            .value_field_ref
+            .cast::<HtmlInputElement>()
+            .map(|ie| ie.value())
+            .map(|v| v.parse::<f64>().ok())
+            .flatten()
+            .map(|v| blockchain_types::toshis_from(v).try_into().ok())
+            .flatten()
+            .map(|v| (v > 0).then(|| v))
+            .flatten()
+            .ok_or("Invalid \"value\".")?;
+
+        Ok((from, to, value))
+    }
+}
+
+impl SendModalState {
+    fn toggle(&mut self) {
+        self.active ^= true;
+    }
+    fn reset_fields(&mut self) {
+        self.error_message = None;
+        if let Some(to_field) = self.to_field_ref.cast::<HtmlInputElement>() {
+            to_field.set_value("");
+        }
+        if let Some(value_field) = self.value_field_ref.cast::<HtmlInputElement>() {
+            value_field.set_value("0");
         }
     }
 }
@@ -338,9 +477,9 @@ impl TransactionsCache {
     }
     fn value_of(&self, tx: &Transaction) -> i64 {
         if tx.from == self.monitored_address {
-            -(tx.amount as i64)
+            -(tx.value as i64)
         } else if tx.to == self.monitored_address {
-            tx.amount as i64
+            tx.value as i64
         } else {
             0
         }
@@ -393,7 +532,7 @@ mod tests {
         let miner_node = sim.pick_random_node().unwrap();
         sim.do_now(ForSpecific(
             miner_node,
-            nakamoto_consensus::BuildAndBroadcastTransaction::new(
+            nakamoto_consensus::BuildAndBroadcastTransaction::from(
                 "CoinBroker25",
                 "Bob",
                 blockchain_types::toshis_from(1.) as u64,
@@ -401,7 +540,7 @@ mod tests {
         ));
         sim.do_now(ForSpecific(
             miner_node,
-            nakamoto_consensus::BuildAndBroadcastTransaction::new(
+            nakamoto_consensus::BuildAndBroadcastTransaction::from(
                 "Bob",
                 "Alice",
                 blockchain_types::toshis_from(0.5) as u64,

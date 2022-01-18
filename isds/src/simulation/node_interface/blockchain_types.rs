@@ -47,7 +47,7 @@ impl IntoIterator for BlockContents {
 pub struct Transaction {
     pub from: Address,
     pub to: Address,
-    pub amount: u64,
+    pub value: u64,
 }
 
 pub type Address = String;
@@ -64,8 +64,8 @@ pub fn toshis_from(coins: f64) -> i64 {
 impl<'a> NodeInterface<'a> {
     /// Registers a transaction in the global database, where it is immutable via the node
     /// interface.
-    pub fn spawn_transaction(&mut self, from: Address, to: Address, amount: u64) -> Entity {
-        self.sim.world.spawn((Transaction { from, to, amount },))
+    pub fn spawn_transaction(&mut self, from: Address, to: Address, value: u64) -> Entity {
+        self.sim.world.spawn((Transaction { from, to, value },))
     }
     pub fn get_transaction(&mut self, tx_id: Entity) -> Option<QueryItem<&Transaction>> {
         self.sim.world.query_one_mut::<&Transaction>(tx_id).ok()
@@ -127,8 +127,8 @@ mod tests {
     wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
 
     impl Transaction {
-        fn new(from: Address, to: Address, amount: u64) -> Self {
-            Self { from, to, amount }
+        fn new(from: Address, to: Address, value: u64) -> Self {
+            Self { from, to, value }
         }
     }
 

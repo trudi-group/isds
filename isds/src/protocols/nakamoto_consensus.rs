@@ -8,13 +8,16 @@ use blockchain_types::*;
 pub struct BuildAndBroadcastTransaction {
     from: Address,
     to: Address,
-    amount: u64,
+    value: u64,
 }
 impl BuildAndBroadcastTransaction {
-    pub fn new(from: &str, to: &str, amount: u64) -> Self {
+    pub fn new(from: String, to: String, value: u64) -> Self {
+        Self { from, to, value }
+    }
+    pub fn from(from: &str, to: &str, value: u64) -> Self {
         let from = from.to_string();
         let to = to.to_string();
-        Self { from, to, amount }
+        Self { from, to, value }
     }
 }
 impl EntityAction for BuildAndBroadcastTransaction {
@@ -24,7 +27,7 @@ impl EntityAction for BuildAndBroadcastTransaction {
             &mut node,
             self.from.clone(),
             self.to.clone(),
-            self.amount,
+            self.value,
         )
     }
 }
@@ -66,13 +69,13 @@ impl NakamotoConsensus {
         node: &mut NodeInterface,
         from: Address,
         to: Address,
-        amount: u64,
+        value: u64,
     ) -> Result<(), Box<dyn Error>> {
         node.log(&format!(
             "Building new transaction: {} toshis from {} to {}.",
-            amount, from, to
+            value, from, to
         ));
-        let tx_id = node.spawn_transaction(from, to, amount);
+        let tx_id = node.spawn_transaction(from, to, value);
         node.get::<NakamotoNodeState>()
             .register_transaction_id(tx_id);
         SimpleFlooding::flood(node, InventoryItem::Transaction(tx_id));
@@ -309,7 +312,7 @@ mod tests {
 
         sim.do_now(ForSpecific(
             node1,
-            BuildAndBroadcastTransaction::new("Alice", "Bob", 32),
+            BuildAndBroadcastTransaction::from("Alice", "Bob", 32),
         ));
         sim.catch_up(100.);
 
@@ -334,7 +337,7 @@ mod tests {
 
         sim.do_now(ForSpecific(
             node1,
-            BuildAndBroadcastTransaction::new("Alice", "Bob", 32),
+            BuildAndBroadcastTransaction::from("Alice", "Bob", 32),
         ));
         sim.catch_up(100.);
 
@@ -372,7 +375,7 @@ mod tests {
 
         sim.do_now(ForSpecific(
             node1,
-            BuildAndBroadcastTransaction::new("Alice", "Bob", 32),
+            BuildAndBroadcastTransaction::from("Alice", "Bob", 32),
         ));
         sim.do_now(ForSpecific(node1, MineBlock));
         sim.catch_up(100.);
