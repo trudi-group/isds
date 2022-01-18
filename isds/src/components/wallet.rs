@@ -1,5 +1,5 @@
 use super::*;
-use blockchain_types::{Address, BlockContents, BlockHeader, Transaction};
+use blockchain_types::{coins_from, Address, BlockContents, BlockHeader, Transaction};
 use nakamoto_consensus::NakamotoNodeState;
 use std::collections::{BTreeSet, VecDeque};
 
@@ -17,7 +17,7 @@ pub enum Msg {
 #[derive(Properties, PartialEq)]
 pub struct Props {
     pub full_node: Option<Entity>,
-    // TODO: wallet addresses to filter by
+    pub address: Address,
 }
 
 impl Component for Wallet {
@@ -29,7 +29,7 @@ impl Component for Wallet {
 
         let sim = context_data.sim;
 
-        let mut cache = TransactionsCache::new();
+        let mut cache = TransactionsCache::new(ctx.props().address.clone());
         cache.full_node = ctx.props().full_node;
         cache.update(&sim.borrow());
 
@@ -41,6 +41,59 @@ impl Component for Wallet {
     }
 
     fn view(&self, _: &Context<Self>) -> Html {
+        html! {
+            <div class="box">
+                { self.view_config_description() }
+                { self.view_balance() }
+                { self.view_transactions() }
+                { self.view_buttons() }
+            </div>
+        }
+    }
+
+    fn update(&mut self, _: &Context<Self>, msg: Self::Message) -> bool {
+        match msg {
+            Msg::Rendered(_) => self.cache.update(&self.sim.borrow()),
+        }
+    }
+
+    fn changed(&mut self, ctx: &Context<Self>) -> bool {
+        self.cache.reset();
+        self.cache.full_node = ctx.props().full_node;
+        self.cache.update(&self.sim.borrow())
+    }
+}
+
+impl Wallet {
+    fn view_config_description(&self) -> Html {
+        html! {
+            <div>
+                { "Wallet of" }
+                <span class="mx-2 is-size-5 is-family-code is-underlined">
+                    { &self.cache.monitored_address }
+                </span>
+                { "connected to node" }
+                <span class="ml-2 is-family-code">
+                    { self.cache.full_node.map_or("None".to_string(), |id| self.sim.borrow().name(id)) }
+                </span>
+            </div>
+        }
+    }
+    fn view_balance(&self) -> Html {
+        html! {
+            <div>
+                <span class="is-size-4">
+                    { format!("{} coins", coins_from(self.cache.total_value_confirmed())) }
+                </span>
+                if !self.cache.txes_unconfirmed.is_empty() {
+                    <span class="ml-2 has-text-grey-light">
+                        { format!("({:+} unconfirmed)", coins_from(self.cache.total_value_unconfirmed())) }
+                    </span>
+                }
+            </div>
+        }
+    }
+    fn view_transactions(&self) -> Html {
         let relevant_transactions = self.cache.iter_all_transactions_newest_first();
         let visible_transactions = relevant_transactions.clone().take(5);
         let value_before = if relevant_transactions.clone().count() > 5 {
@@ -54,130 +107,110 @@ impl Component for Wallet {
             None
         };
         html! {
-            <div class="box">
-                <div>
-                    { "Wallet of" }
-                    <span class="mx-2 is-size-5 is-family-code is-underlined">
-                        { "Bob" }
-                    </span>
-                    { "connected to node" }
-                    <span class="ml-2 is-family-code">
-                        { format!("{}", self.cache.full_node.map_or("None".to_string(), |id| self.sim.borrow().name(id))) }
-                    </span>
-                </div>
-                <div>
-                    <span class="is-size-4">
-                        { format!("{} coins", to_coin(self.cache.total_value_confirmed())) }
-                    </span>
-                    <span class="ml-2">
-                        { format!("({:+} unconfirmed)", to_coin(self.cache.total_value_unconfirmed())) }
-                    </span>
-                </div>
-                <table class="table is-fullwidth">
-                    <tbody>
-                        {
-                            visible_transactions.map(|(confirmations, tx)| {
-                                html! {
-                                    <tr>
-                                        <td>
+            <table class="table is-fullwidth">
+                <tbody>
+                    {
+                        visible_transactions.map(|(confirmations, tx)| {
+                            let coin_value = coins_from(self.cache.value_of(tx));
+                            let value_color_class = if confirmations < 1 {
+                                "has-text-grey-light"
+                            } else if coin_value < 0. {
+                                "has-text-danger"
+                            } else {
+                                "has-text-success"
+                            };
+                            let icon_color_class = if confirmations < 3 {
+                                "has-text-warning"
+                            } else if coin_value < 0. {
+                                "has-text-danger"
+                            } else {
+                                "has-text-success"
+                            };
+                            html! {
+                                <tr>
+                                    <td>
+                                        <span class={classes!("icon", "is-size-6", icon_color_class)}>
                                             if confirmations < 3 {
-                                                <span class="icon is-size-6 has-text-warning">
-                                                    { format!("{}/3", confirmations) }
-                                                </span>
+                                                { format!("{}/3", confirmations) }
                                             } else {
-                                                <span class="icon has-text-success">
-                                                // <span class="icon has-text-danger">
-                                                    <i class="fas fa-circle"></i>
-                                                </span>
+                                                <i class="fas fa-circle"></i>
                                             }
-                                        </td>
-                                        <td>
-                                            <span class="has-text-grey-light is-family-code">
-                                                { &tx.from }
-                                            </span>
-                                        </td>
-                                        <td>
-                                            if confirmations <= 3 {
-                                                <span class="has-text-warning has-text-weight-medium">
-                                                    { format!("{:+}", to_coin(self.cache.value_of(tx))) }
-                                                </span>
-                                            } else {
-                                                <span class="has-text-success has-text-weight-medium">
-                                                // <span class="has-text-danger has-text-weight-medium">
-                                                    { format!("{:+}", to_coin(self.cache.value_of(tx))) }
-                                                </span>
-                                            }
-                                        </td>
-                                    </tr>
-                                }
-                            }).collect::<Html>()
-                        }
-                        if let Some(value) = value_before {
-                            <tr>
-                                <td colspan=2 class="has-text-centered">
-                                    <span class="has-text-grey-light is-family-code">
-                                        { "..." }
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="has-text-grey-light">
-                                        { to_coin(value) }
-                                    </span>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-                <div class="buttons">
-                    <button class="button">
-                        <span class="icon">
-                            <i class="fas fa-paper-plane fa-rotate-90"></i>
-                        </span>
-                        <span>
-                            { "Request coins" }
-                        </span>
-                    </button>
-                    <button class="button">
-                        <span>
-                            { "Send coins" }
-                        </span>
-                        <span class="icon">
-                            <i class="fas fa-paper-plane"></i>
-                        </span>
-                    </button>
-                </div>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class={classes!("has-text-grey-light", "is-family-code")}>
+                                            { &tx.from }
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class={classes!(value_color_class, "has-text-weight-medium")}>
+                                            { format!("{:+}", coins_from(self.cache.value_of(tx))) }
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                        }).collect::<Html>()
+                    }
+                    if let Some(value) = value_before {
+                        <tr>
+                            <td colspan=2 class="has-text-centered">
+                                <span class="has-text-grey-light is-family-code">
+                                    { "..." }
+                                </span>
+                            </td>
+                            <td>
+                                <span class="has-text-grey-light">
+                                    { coins_from(value) }
+                                </span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+    fn view_buttons(&self) -> Html {
+        html! {
+            <div class="buttons">
+                <button class="button">
+                    <span class="icon">
+                        <i class="fas fa-paper-plane fa-rotate-90"></i>
+                    </span>
+                    <span>
+                        { "Request coins" }
+                    </span>
+                </button>
+                <button class="button">
+                    <span>
+                        { "Send coins" }
+                    </span>
+                    <span class="icon">
+                        <i class="fas fa-paper-plane"></i>
+                    </span>
+                </button>
             </div>
         }
-    }
-
-    fn update(&mut self, _: &Context<Self>, msg: Self::Message) -> bool {
-        match msg {
-            Msg::Rendered(_) => self.cache.update(&self.sim.borrow()),
-        }
-    }
-
-    fn changed(&mut self, ctx: &Context<Self>) -> bool {
-        self.cache.clear();
-        self.cache.full_node = ctx.props().full_node;
-        self.cache.update(&self.sim.borrow())
     }
 }
 
 #[derive(Debug, Default, Clone, Eq, PartialEq)]
 struct TransactionsCache {
     full_node: Option<Entity>,
-    // monitored_addresses: Vec<Address>,
+    monitored_address: Address,
     tip: Option<BlockHeader>,
     txes_confirmed: VecDeque<(usize, Transaction)>,
     txids_unconfirmed: BTreeSet<Entity>,
     txes_unconfirmed: VecDeque<Transaction>,
 }
 impl TransactionsCache {
-    fn new() -> Self {
-        Self::default()
+    fn new(monitored_address: Address) -> Self {
+        Self {
+            monitored_address,
+            ..Self::default()
+        }
     }
-    fn clear(&mut self) -> bool {
-        let new_self = Self::new();
+    fn reset(&mut self) -> bool {
+        let new_self = Self::new(self.monitored_address.clone());
         let changed_something = *self == new_self;
         *self = new_self;
         changed_something
@@ -189,34 +222,17 @@ impl TransactionsCache {
             0
         }
     }
-    fn total_value_confirmed(&self) -> i32 {
+    fn total_value_confirmed(&self) -> i64 {
         self.txes_confirmed
             .iter()
-            .map(|(height, tx)| {
-                if *height < self.tip_height() {
-                    self.value_of(tx)
-                } else {
-                    0
-                }
-            })
+            .map(|(_, tx)| self.value_of(tx))
             .sum()
     }
-    fn total_value_unconfirmed(&self) -> i32 {
-        self.txes_confirmed
+    fn total_value_unconfirmed(&self) -> i64 {
+        self.txes_unconfirmed
             .iter()
-            .map(|(height, tx)| {
-                if height + 1 > self.tip_height() {
-                    self.value_of(tx)
-                } else {
-                    0
-                }
-            })
-            .sum::<i32>()
-            + self
-                .txes_unconfirmed
-                .iter()
-                .map(|tx| self.value_of(tx))
-                .sum::<i32>()
+            .map(|tx| self.value_of(tx))
+            .sum()
     }
     fn iter_all_transactions_newest_first(
         &self,
@@ -232,10 +248,10 @@ impl TransactionsCache {
             if let Some(state) = get_state(full_node, sim) {
                 self.update_confirmed(&state, sim) || self.update_unconfirmed(&state, sim)
             } else {
-                self.clear()
+                self.reset()
             }
         } else {
-            self.clear()
+            self.reset()
         }
     }
     fn update_confirmed(&mut self, state: &NakamotoNodeState, sim: &Simulation) -> bool {
@@ -292,6 +308,13 @@ impl TransactionsCache {
             true
         }
     }
+    fn rebuild_confirmed_from_tip(&mut self, sim: &Simulation, block_id: Entity) {
+        self.txes_confirmed.clear();
+        let mut next_block = Some(block_id);
+        while let Some(block_id) = next_block {
+            next_block = self.update_confirmed_by_one_block(sim, block_id)
+        }
+    }
     fn update_confirmed_by_one_block(
         &mut self,
         sim: &Simulation,
@@ -310,21 +333,17 @@ impl TransactionsCache {
         }
         block_header.id_prev
     }
-    fn rebuild_confirmed_from_tip(&mut self, sim: &Simulation, block_id: Entity) {
-        self.txes_confirmed.clear();
-        let mut next_block = Some(block_id);
-        while let Some(block_id) = next_block {
-            next_block = self.update_confirmed_by_one_block(sim, block_id)
-        }
-    }
-    // FIXME why in "Cache"?
     fn is_relevant(&self, tx: &Transaction) -> bool {
-        // TODO
-        true
+        tx.from == self.monitored_address || tx.to == self.monitored_address
     }
-    fn value_of(&self, tx: &Transaction) -> i32 {
-        // TODO
-        tx.amount as i32
+    fn value_of(&self, tx: &Transaction) -> i64 {
+        if tx.from == self.monitored_address {
+            -(tx.amount as i64)
+        } else if tx.to == self.monitored_address {
+            tx.amount as i64
+        } else {
+            0
+        }
     }
 }
 
@@ -351,8 +370,67 @@ fn get_state(node_id: Entity, sim: &Simulation) -> Option<hecs::Ref<NakamotoNode
     sim.world.get::<NakamotoNodeState>(node_id).ok()
 }
 
-fn to_coin(satoshis: i32) -> f64 {
-    satoshis as f64 / 10f64.powi(8)
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use wasm_bindgen_test::*;
 
-// TODO tests? Should be able to peak into the `Html?`
+    wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
+
+    #[wasm_bindgen_test]
+    fn cache_registers_early_transactions() {
+        let mut sim = Simulation::new();
+        sim.add_event_handler(InvokeProtocolForAllNodes(
+            nakamoto_consensus::NakamotoConsensus::default(),
+        ));
+
+        // init network
+        sim.do_now(SpawnRandomNodes(10));
+        sim.do_now(MakeDelaunayNetwork);
+        sim.work_until(SimSeconds::from(0.001)); // to make sure that some nodes are there
+
+        // make fake "genesis payments" so that wallet balances are not 0
+        let miner_node = sim.pick_random_node().unwrap();
+        sim.do_now(ForSpecific(
+            miner_node,
+            nakamoto_consensus::BuildAndBroadcastTransaction::new(
+                "CoinBroker25",
+                "Bob",
+                blockchain_types::toshis_from(1.) as u64,
+            ),
+        ));
+        sim.do_now(ForSpecific(
+            miner_node,
+            nakamoto_consensus::BuildAndBroadcastTransaction::new(
+                "Bob",
+                "Alice",
+                blockchain_types::toshis_from(0.5) as u64,
+            ),
+        ));
+        // bury them beneath a couple of blocks
+        sim.do_now(MultipleTimes::new(
+            ForSpecific(miner_node, nakamoto_consensus::MineBlock),
+            2,
+        ));
+        sim.work_until(SimSeconds::from(0.5));
+        sim.do_now(ForRandomNode(nakamoto_consensus::MineBlock));
+        sim.work_until(SimSeconds::from(1.));
+
+        let wallet_node = sim.pick_random_other_node(miner_node).unwrap();
+        let mut cache = TransactionsCache::new("Bob".to_string());
+        cache.full_node = Some(wallet_node);
+        cache.update(&mut sim);
+
+        assert_eq!(cache.tip_height(), 3, "Cache didn't get all blocks?");
+        assert_eq!(
+            cache.iter_all_transactions_newest_first().count(),
+            2,
+            "Cache didn't get all transactions?"
+        );
+        assert_eq!(
+            cache.total_value_confirmed(),
+            blockchain_types::toshis_from(0.5),
+            "Cache didn't calculate wallet value correctly?"
+        );
+    }
+}

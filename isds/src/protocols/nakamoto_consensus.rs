@@ -8,10 +8,10 @@ use blockchain_types::*;
 pub struct BuildAndBroadcastTransaction {
     from: Address,
     to: Address,
-    amount: u32,
+    amount: u64,
 }
 impl BuildAndBroadcastTransaction {
-    pub fn new(from: &str, to: &str, amount: u32) -> Self {
+    pub fn new(from: &str, to: &str, amount: u64) -> Self {
         let from = from.to_string();
         let to = to.to_string();
         Self { from, to, amount }
@@ -66,10 +66,10 @@ impl NakamotoConsensus {
         node: &mut NodeInterface,
         from: Address,
         to: Address,
-        amount: u32,
+        amount: u64,
     ) -> Result<(), Box<dyn Error>> {
         node.log(&format!(
-            "Building new transaction: {} coins from {} to {}.",
+            "Building new transaction: {} toshis from {} to {}.",
             amount, from, to
         ));
         let tx_id = node.spawn_transaction(from, to, amount);
@@ -200,13 +200,15 @@ impl NakamotoNodeState {
     }
     fn register_new_tip(&mut self, block_id: Entity, block_contents: BlockContents) {
         self.tip = Some(block_id);
-        for txid in block_contents.into_iter() {
-            self.txes_unconfirmed.remove(&txid);
-            self.txes_confirmed.insert(txid);
+        for tx_id in block_contents.into_iter() {
+            self.txes_unconfirmed.remove(&tx_id);
+            self.txes_confirmed.insert(tx_id);
         }
     }
     fn register_transaction_id(&mut self, tx_id: Entity) {
-        self.txes_unconfirmed.insert(tx_id);
+        if !self.txes_confirmed.contains(&tx_id) {
+            self.txes_unconfirmed.insert(tx_id);
+        }
     }
     fn drain_unconfirmed_transactions(&mut self) -> impl IntoIterator<Item = Entity> {
         let mut tmp = BTreeSet::new();
@@ -356,6 +358,35 @@ mod tests {
             .clone();
 
         assert!(block_contents.len() == 1);
+    }
+
+    #[wasm_bindgen_test]
+    fn transactions_are_not_registered_if_already_confirmed() {
+        let mut sim = Simulation::new();
+        sim.add_event_handler(InvokeProtocolForAllNodes(NakamotoConsensus::default()));
+
+        let node1 = sim.spawn_random_node();
+        let node2 = sim.spawn_random_node();
+        sim.add_peer(node1, node2);
+        sim.add_peer(node2, node1);
+
+        sim.do_now(ForSpecific(
+            node1,
+            BuildAndBroadcastTransaction::new("Alice", "Bob", 32),
+        ));
+        sim.do_now(ForSpecific(node1, MineBlock));
+        sim.catch_up(100.);
+
+        let mut state2 = get_state(&mut sim, node2);
+
+        assert!(state2.txes_unconfirmed.is_empty());
+        assert!(!state2.txes_confirmed.is_empty());
+
+        let tx_id = state2.txes_confirmed.iter().cloned().next().unwrap();
+
+        state2.register_transaction_id(tx_id);
+
+        assert!(state2.txes_unconfirmed.is_empty());
     }
 
     #[wasm_bindgen_test]

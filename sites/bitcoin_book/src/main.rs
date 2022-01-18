@@ -43,7 +43,7 @@ impl Component for BitcoinBook {
                     <div class="columns">
                         <div class="box column">
                             <isds::Isds sim={ self.sim.clone() }>
-                                <isds::Wallet full_node={ Some(self.wallet_node) }/>
+                                <isds::Wallet full_node={ Some(self.wallet_node) } address="Alice" />
                                     <div class="is-flex">
                                         <isds::TimeUi />
                                         <div class="mx-1 p-1">
@@ -82,19 +82,58 @@ fn init_simulation() -> isds::Simulation {
     sim.add_event_handler(isds::InvokeProtocolForAllNodes(
         isds::nakamoto_consensus::NakamotoConsensus::default(),
     ));
+
+    // init network
+    sim.do_now(isds::SpawnRandomNodes(10));
+    sim.do_now(isds::MakeDelaunayNetwork);
+    sim.work_until(isds::SimSeconds::from(0.001)); // to make sure that some nodes are there
+
+    // make fake "genesis payments" so that wallet balances are not 0
+    let power_node = sim.pick_random_node().unwrap();
+    sim.do_now(isds::ForSpecific(
+        power_node,
+        isds::nakamoto_consensus::BuildAndBroadcastTransaction::new(
+            "CoinBroker25",
+            "Alice",
+            isds::blockchain_types::toshis_from(10.) as u64,
+        ),
+    ));
+    sim.do_now(isds::ForSpecific(
+        power_node,
+        isds::nakamoto_consensus::BuildAndBroadcastTransaction::new(
+            "Roberts",
+            "Alice",
+            isds::blockchain_types::toshis_from(15.) as u64,
+        ),
+    ));
+    // bury them beneath a couple of blocks
+    sim.do_now(isds::MultipleTimes::new(
+        isds::ForSpecific(power_node, isds::nakamoto_consensus::MineBlock),
+        3,
+    ));
+    sim.work_until(isds::SimSeconds::from(1.));
+
+    // periodic logic
     sim.do_now(isds::AtRandomIntervals::new(
         isds::ForRandomNode(isds::nakamoto_consensus::BuildAndBroadcastTransaction::new(
-            "Alice", "Bob", 1337,
+            "Alice",
+            "Bob",
+            isds::blockchain_types::toshis_from(0.1337) as u64,
         )),
-        isds::SimSeconds::from(0.5),
+        isds::SimSeconds::from(5.),
+    ));
+    sim.do_now(isds::AtRandomIntervals::new(
+        isds::ForRandomNode(isds::nakamoto_consensus::BuildAndBroadcastTransaction::new(
+            "Bob",
+            "Alice",
+            isds::blockchain_types::toshis_from(0.42) as u64,
+        )),
+        isds::SimSeconds::from(5.),
     ));
     sim.do_now(isds::AtRandomIntervals::new(
         isds::ForRandomNode(isds::nakamoto_consensus::MineBlock),
         isds::SimSeconds::from(2.),
     ));
-    sim.do_now(isds::SpawnRandomNodes(10));
-    sim.do_now(isds::MakeDelaunayNetwork);
-    sim.catch_up(0.0001); // to make sure that some nodes are there
     sim
 }
 
