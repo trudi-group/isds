@@ -12,6 +12,7 @@ use std::collections::VecDeque;
 use std::mem;
 
 mod command;
+mod command_repeaters;
 mod despawner;
 mod event_queue;
 mod logger;
@@ -24,9 +25,8 @@ mod underlay;
 
 use despawner::Despawner;
 
-pub use command::{
-    AtRandomIntervals, AtStaticIntervals, Command, EntityAction, ForSpecific, MultipleTimes,
-};
+pub use command::{Command, EntityAction, ForSpecific};
+pub use command_repeaters::{AtRandomIntervals, AtStaticIntervals, MultipleTimes};
 pub use event_queue::EventQueue;
 pub use logger::Logger;
 pub use node_interface::{blockchain_types, NodeInterface};
