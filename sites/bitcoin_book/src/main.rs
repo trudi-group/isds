@@ -51,12 +51,7 @@ impl Component for BitcoinBook {
                                         Some(isds::SendWhitelist::new(vec!["Bob", "Charlie"], wallet_send_amounts.clone()))
                                     }
                                 />
-                                    <div class="is-flex">
-                                        <isds::TimeUi />
-                                        <div class="mx-1 p-1">
-                                            { "FPS: " } <isds::FpsCounter />
-                                        </div>
-                                    </div>
+                                <isds::TimeUi show_fps=true />
                                 <isds::NetView />
                             </isds::Isds>
                         </div>

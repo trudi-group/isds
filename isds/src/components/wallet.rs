@@ -251,8 +251,8 @@ impl Wallet {
         };
         if let Some(send_whitelist) = ctx.props().send_whitelist.as_ref() {
             html! {
-                <div class="field is-grouped">
-                    <div class="field-label is-normal">
+                <div class="level">
+                    <div class="level-item">
                         <span class="icon">
                             <i class="fas fa-paper-plane" />
                         </span>
@@ -260,24 +260,26 @@ impl Wallet {
                             { "Send" }
                         </span>
                     </div>
-                    {
-                        send_whitelist.amounts.iter().map(|amount| {
-                            let disabled = ctx.props().full_node.is_some() && *amount > balance;
-                            html! {
-                                <div class="control">
-                                    <button class="button" onclick={ onclick(*amount) } disabled={ disabled }>
-                                        { blockchain_types::coins_from(*amount as i64) }
-                                    </button>
-                                </div>
+                    <div class="level-item">
+                        <div class="buttons">
+                            {
+                                send_whitelist.amounts.iter().map(|amount| {
+                                    let disabled = ctx.props().full_node.is_some() && *amount > balance;
+                                    html! {
+                                        <button class="button" onclick={ onclick(*amount) } disabled={ disabled }>
+                                            { blockchain_types::coins_from(*amount as i64) }
+                                        </button>
+                                    }
+                                }).collect::<Html>()
                             }
-                        }).collect::<Html>()
-                    }
-                    <div class="field-label is-normal">
+                        </div>
+                    </div>
+                    <div class="level-item">
                         <span>
                             { "coins to" }
                         </span>
                     </div>
-                    <div class="control">
+                    <div class="level-item">
                         <div class="select">
                             <select ref={ select_ref.clone() }>
                                 {

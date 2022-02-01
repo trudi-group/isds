@@ -21,12 +21,7 @@ impl Component for NakamotoStandalone {
         html! {
             <isds::Isds sim={ self.sim.clone() }>
                 <div style="margin-bottom: -50px"> // chosen based on `buffer_space` of `NetView`
-                    <div class="is-flex">
-                        <isds::TimeUi />
-                        <div class="mx-1 p-1">
-                            { "FPS: " } <isds::FpsCounter />
-                        </div>
-                    </div>
+                    <isds::TimeUi />
                 </div>
                 <isds::NetView />
             </isds::Isds>

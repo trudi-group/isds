@@ -1,20 +1,29 @@
 use super::*;
 
-// #[derive(Properties, PartialEq)]
-// pub struct Props {
-//     #[prop_or_default]
-//     sim: Option<SharedSimulation>,
-// }
+#[derive(Properties, PartialEq)]
+pub struct TimeUiProps {
+    #[prop_or_default]
+    pub show_fps: bool,
+}
 
 #[function_component(TimeUi)]
-pub fn time_ui() -> Html {
+pub fn time_ui(props: &TimeUiProps) -> Html {
     html! {
-        <div class="is-flex">
-            <div class="buttons are-small">
-                <TimeControls/>
-            </div>
-            <div class="mx-1 p-1">
-                <TimeDisplay/>
+        <div class="level is-mobile">
+            <div class="level-left">
+                <div class="level-item">
+                    <div class="buttons are-small">
+                        <TimeControls/>
+                    </div>
+                </div>
+                <div class="level-item">
+                    <TimeDisplay/>
+                </div>
+                if props.show_fps {
+                    <div class="level-item">
+                        { "FPS: " } <FpsCounter />
+                    </div>
+                }
             </div>
         </div>
     }
