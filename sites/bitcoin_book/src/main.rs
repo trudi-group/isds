@@ -24,6 +24,7 @@ impl Component for BitcoinBook {
     }
 
     fn view(&self, _: &Context<Self>) -> Html {
+        let wallet_send_amounts = vec![0.5, 1., 5., 10.];
         html! {
             <>
                 <header class="section">
@@ -43,7 +44,13 @@ impl Component for BitcoinBook {
                     <div class="columns">
                         <div class="box column">
                             <isds::Isds sim={ self.sim.clone() }>
-                                <isds::Wallet full_node={ Some(self.wallet_node) } address="Alice" />
+                                <isds::Wallet
+                                    full_node={ Some(self.wallet_node) }
+                                    address="Alice"
+                                    send_whitelist={
+                                        Some(isds::SendWhitelist::new(vec!["Bob", "Charlie"], wallet_send_amounts.clone()))
+                                    }
+                                />
                                     <div class="is-flex">
                                         <isds::TimeUi />
                                         <div class="mx-1 p-1">

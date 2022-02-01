@@ -3,7 +3,7 @@ use blockchain_types::{coins_from, Address, BlockContents, BlockHeader, Transact
 use nakamoto_consensus::NakamotoNodeState;
 use std::collections::{BTreeSet, VecDeque};
 
-use web_sys::HtmlInputElement;
+use web_sys::{HtmlInputElement, HtmlSelectElement};
 
 pub struct Wallet {
     sim: SharedSimulation,
@@ -24,13 +24,34 @@ struct SendModalState {
 pub enum Msg {
     Rendered(RealSeconds),
     ToggleSendModal,
-    BroadcastNewTransaction,
+    BroadcastNewTransactionFromWhitelist(u64, String),
+    BroadcastNewTransactionFromModal,
 }
 
 #[derive(Properties, PartialEq)]
 pub struct Props {
     pub full_node: Option<Entity>,
     pub address: Address,
+    /// If no send amounts are set, a send button with arbitrary amounts is enabled.
+    pub send_whitelist: Option<SendWhitelist>,
+}
+#[derive(PartialEq)]
+pub struct SendWhitelist {
+    pub amounts: Vec<u64>,
+    pub recipients: Vec<Address>,
+}
+impl SendWhitelist {
+    pub fn new(recipients: Vec<&str>, coin_amounts: Vec<f64>) -> Self {
+        let amounts = coin_amounts
+            .into_iter()
+            .map(|c| blockchain_types::toshis_from(c) as u64)
+            .collect();
+        let recipients = recipients.into_iter().map(|s| s.to_string()).collect();
+        Self {
+            amounts,
+            recipients,
+        }
+    }
 }
 
 impl Component for Wallet {
@@ -57,11 +78,13 @@ impl Component for Wallet {
     fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
             <div class="box">
-                { self.view_config_description() }
-                { self.view_balance() }
+                { self.view_top_infos() }
                 { self.view_transactions() }
-                { self.view_buttons(ctx) }
-                { self.view_send_modal(ctx) }
+                if ctx.props().send_whitelist.is_some() {
+                    { self.view_constrained_send_ui(ctx) }
+                } else {
+                    { self.view_arbitrary_send_ui(ctx) }
+                }
             </div>
         }
     }
@@ -74,12 +97,22 @@ impl Component for Wallet {
                 self.send_modal.reset_fields();
                 true
             }
-            Msg::BroadcastNewTransaction => {
+            Msg::BroadcastNewTransactionFromWhitelist(amount, recipient) => {
+                let sender = ctx.props().address.clone();
+                self.sim.borrow_mut().do_now(ForSpecific(
+                    ctx.props().full_node.unwrap(), // buttons wouldn't have been clickable if it was `None`
+                    nakamoto_consensus::BuildAndBroadcastTransaction::new(
+                        sender, recipient, amount,
+                    ),
+                ));
+                true
+            }
+            Msg::BroadcastNewTransactionFromModal => {
                 match self.parse_send_form(ctx) {
-                    Ok((to, from, value)) => {
+                    Ok((from, to, value)) => {
                         self.sim.borrow_mut().do_now(ForSpecific(
                             ctx.props().full_node.unwrap(), // modal couldn't have been opened if it was `None`
-                            nakamoto_consensus::BuildAndBroadcastTransaction::new(to, from, value),
+                            nakamoto_consensus::BuildAndBroadcastTransaction::new(from, to, value),
                         ));
                         self.send_modal.toggle();
                         self.send_modal.reset_fields();
@@ -101,32 +134,12 @@ impl Component for Wallet {
 }
 
 impl Wallet {
-    fn view_config_description(&self) -> Html {
+    fn view_top_infos(&self) -> Html {
         html! {
-            <div>
-                { "Wallet of" }
-                <span class="mx-2 is-size-5 is-family-code is-underlined">
-                    { &self.cache.monitored_address }
-                </span>
-                { "connected to node" }
-                <span class="ml-2 is-family-code">
-                    { self.cache.full_node.map_or("None".to_string(), |id| self.sim.borrow().name(id)) }
-                </span>
-            </div>
-        }
-    }
-    fn view_balance(&self) -> Html {
-        html! {
-            <div>
-                <span class="is-size-4">
-                    { format!("{} coins", coins_from(self.cache.total_value_confirmed())) }
-                </span>
-                if !self.cache.txes_unconfirmed.is_empty() {
-                    <span class="ml-2 has-text-grey-light">
-                        { format!("({:+} unconfirmed)", coins_from(self.cache.total_value_unconfirmed())) }
-                    </span>
-                }
-            </div>
+            <>
+                { self.view_config_description() }
+                { self.view_balance() }
+            </>
         }
     }
     fn view_transactions(&self) -> Html {
@@ -138,7 +151,7 @@ impl Wallet {
                     relevant_transactions.clone().take(max_columns - 1),
                     Some(
                         relevant_transactions
-                            .skip(5)
+                            .skip(max_columns)
                             .map(|(_, tx)| self.cache.value_of(tx))
                             .sum(),
                     ),
@@ -214,7 +227,114 @@ impl Wallet {
             </table>
         }
     }
-    fn view_buttons(&self, ctx: &Context<Self>) -> Html {
+    fn view_constrained_send_ui(&self, ctx: &Context<Self>) -> Html {
+        let balance =
+            (self.cache.total_value_confirmed() + self.cache.total_value_unconfirmed()) as u64;
+        let select_ref = NodeRef::default();
+        let onclick = |amount: u64| {
+            let select_ref_clone = select_ref.clone();
+            let recipients_clone = ctx
+                .props()
+                .send_whitelist
+                .as_ref()
+                .unwrap()
+                .recipients
+                .clone();
+            ctx.link().callback(move |_| {
+                let selected_index = select_ref_clone
+                    .cast::<HtmlSelectElement>()
+                    .unwrap()
+                    .selected_index() as usize;
+                let recipient = recipients_clone[selected_index].clone();
+                Msg::BroadcastNewTransactionFromWhitelist(amount, recipient)
+            })
+        };
+        if let Some(send_whitelist) = ctx.props().send_whitelist.as_ref() {
+            html! {
+                <div class="field is-grouped">
+                    <div class="field-label is-normal">
+                        <span class="icon">
+                            <i class="fas fa-paper-plane" />
+                        </span>
+                        <span>
+                            { "Send" }
+                        </span>
+                    </div>
+                    {
+                        send_whitelist.amounts.iter().map(|amount| {
+                            let disabled = ctx.props().full_node.is_some() && *amount > balance;
+                            html! {
+                                <div class="control">
+                                    <button class="button" onclick={ onclick(*amount) } disabled={ disabled }>
+                                        { blockchain_types::coins_from(*amount as i64) }
+                                    </button>
+                                </div>
+                            }
+                        }).collect::<Html>()
+                    }
+                    <div class="field-label is-normal">
+                        <span>
+                            { "coins to" }
+                        </span>
+                    </div>
+                    <div class="control">
+                        <div class="select">
+                            <select ref={ select_ref.clone() }>
+                                {
+                                    send_whitelist.recipients.iter().map(|recipient| {
+                                        html! {
+                                            <option> { recipient } </option>
+                                        }
+                                    }).collect::<Html>()
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            }
+        } else {
+            html! {
+                { "No send whitelist set." }
+            }
+        }
+    }
+    fn view_arbitrary_send_ui(&self, ctx: &Context<Self>) -> Html {
+        html! {
+            <>
+                { self.view_arbitrary_send_button(ctx) }
+                { self.view_arbitrary_send_modal(ctx) }
+            </>
+        }
+    }
+    fn view_config_description(&self) -> Html {
+        html! {
+            <div>
+                { "Wallet of" }
+                <span class="mx-2 is-size-5 is-family-code is-underlined">
+                    { &self.cache.monitored_address }
+                </span>
+                { "connected to node" }
+                <span class="ml-2 is-family-code">
+                    { self.cache.full_node.map_or("None".to_string(), |id| self.sim.borrow().name(id)) }
+                </span>
+            </div>
+        }
+    }
+    fn view_balance(&self) -> Html {
+        html! {
+            <div>
+                <span class="is-size-4">
+                    { format!("{} coins", coins_from(self.cache.total_value_confirmed())) }
+                </span>
+                if !self.cache.txes_unconfirmed.is_empty() {
+                    <span class="ml-2 has-text-grey-light">
+                        { format!("({:+} unconfirmed)", coins_from(self.cache.total_value_unconfirmed())) }
+                    </span>
+                }
+            </div>
+        }
+    }
+    fn view_arbitrary_send_button(&self, ctx: &Context<Self>) -> Html {
         let onclick_send = ctx.link().callback(|_| Msg::ToggleSendModal);
         html! {
             <div class="buttons is-centered">
@@ -229,8 +349,10 @@ impl Wallet {
             </div>
         }
     }
-    fn view_send_modal(&self, ctx: &Context<Self>) -> Html {
-        let onclick_broadcast = ctx.link().callback(|_| Msg::BroadcastNewTransaction);
+    fn view_arbitrary_send_modal(&self, ctx: &Context<Self>) -> Html {
+        let onclick_broadcast = ctx
+            .link()
+            .callback(|_| Msg::BroadcastNewTransactionFromModal);
         let onclick_close = ctx.link().callback(|_| Msg::ToggleSendModal);
         html! {
             <div class={ classes!("modal", self.send_modal.active.then(|| Some("is-active"))) } >
