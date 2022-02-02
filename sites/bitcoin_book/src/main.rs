@@ -2,6 +2,9 @@ use isds::{log, SharedSimulation};
 use wasm_bindgen::JsCast;
 use yew::prelude::*;
 
+#[macro_use]
+mod utils;
+
 struct BitcoinBook {
     sim: SharedSimulation,
     wallet_node: isds::Entity,
@@ -33,12 +36,9 @@ impl Component for BitcoinBook {
                     //         <li class="is-active">{"Start"}</li>
                     //     </ul>
                     // </nav>
-                    <article>
-                        <h1 class="title">{ "How does Bitcoin work?" }</h1>
-                        <p>
-                            { "Optional text" }
-                        </p>
-                    </article>
+                    <h1 class="title">{ "Layers of Bitcoin*" }</h1>
+                    <h2 class="subtitle">{ "* and \"blockchain\" more generally" }</h2>
+                    { include_markdown_content!("../assets/intro.md") }
                 </header>
                 <main class="section">
                     <div class="columns">
@@ -81,7 +81,7 @@ impl Component for BitcoinBook {
                             </div>
                         </div>
                         <div class="column">
-                            {"Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet."}
+                            { include_markdown_content!("../assets/wallets.md") }
                         </div>
                     </div>
                 </main>
@@ -140,30 +140,10 @@ fn init_simulation() -> isds::Simulation {
     ));
     sim.work_until(isds::SimSeconds::from(1.));
 
-    // periodic logic
-    sim.do_now(isds::AtRandomIntervals::new(
-        isds::ForRandomNode(
-            isds::nakamoto_consensus::BuildAndBroadcastTransaction::from(
-                "Alice",
-                "Bob",
-                isds::blockchain_types::toshis_from(0.1337) as u64,
-            ),
-        ),
-        isds::SimSeconds::from(5.),
-    ));
-    sim.do_now(isds::AtRandomIntervals::new(
-        isds::ForRandomNode(
-            isds::nakamoto_consensus::BuildAndBroadcastTransaction::from(
-                "Bob",
-                "Alice",
-                isds::blockchain_types::toshis_from(0.42) as u64,
-            ),
-        ),
-        isds::SimSeconds::from(5.),
-    ));
+    // magically mine a block at random intervals centered around 10 minutes
     sim.do_now(isds::AtRandomIntervals::new(
         isds::ForRandomNode(isds::nakamoto_consensus::MineBlock),
-        isds::SimSeconds::from(2.),
+        isds::SimSeconds::from(600.),
     ));
     sim
 }
