@@ -34,6 +34,8 @@ pub struct Props {
     pub address: Address,
     /// If no send amounts are set, a send button with arbitrary amounts is enabled.
     pub send_whitelist: Option<SendWhitelist>,
+    #[prop_or_default]
+    pub class: Classes,
 }
 #[derive(PartialEq)]
 pub struct SendWhitelist {
@@ -77,7 +79,7 @@ impl Component for Wallet {
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
-            <div class="box">
+            <div class={ ctx.props().class.clone() }>
                 { self.view_top_infos() }
                 { self.view_transactions() }
                 if ctx.props().send_whitelist.is_some() {
@@ -160,7 +162,7 @@ impl Wallet {
                 (relevant_transactions.clone().take(max_columns), None)
             };
         html! {
-            <table class="table is-fullwidth">
+            <table class="table is-fullwidth mb-1">
                 <tbody>
                     {
                         visible_transactions.map(|(confirmations, tx)| {
@@ -251,8 +253,8 @@ impl Wallet {
         };
         if let Some(send_whitelist) = ctx.props().send_whitelist.as_ref() {
             html! {
-                <div class="level">
-                    <div class="level-item">
+                <div class="is-flex is-flex-wrap-wrap is-align-items-center">
+                    <div class="mr-2">
                         <span class="icon">
                             <i class="fas fa-paper-plane" />
                         </span>
@@ -260,37 +262,33 @@ impl Wallet {
                             { "Send" }
                         </span>
                     </div>
-                    <div class="level-item">
-                        <div class="buttons">
-                            {
-                                send_whitelist.amounts.iter().map(|amount| {
-                                    let disabled = ctx.props().full_node.is_some() && *amount > balance;
-                                    html! {
-                                        <button class="button" onclick={ onclick(*amount) } disabled={ disabled }>
-                                            { blockchain_types::coins_from(*amount as i64) }
-                                        </button>
-                                    }
-                                }).collect::<Html>()
-                            }
-                        </div>
+                    <div class="buttons has-addons my-1">
+                        {
+                            send_whitelist.amounts.iter().map(|amount| {
+                                let disabled = ctx.props().full_node.is_some() && *amount > balance;
+                                html! {
+                                    <button class="button mb-0" onclick={ onclick(*amount) } disabled={ disabled }>
+                                        { blockchain_types::coins_from(*amount as i64) }
+                                    </button>
+                                }
+                            }).collect::<Html>()
+                        }
                     </div>
-                    <div class="level-item">
+                    <div class="mx-2">
                         <span>
                             { "coins to" }
                         </span>
                     </div>
-                    <div class="level-item">
-                        <div class="select">
-                            <select ref={ select_ref.clone() }>
-                                {
-                                    send_whitelist.recipients.iter().map(|recipient| {
-                                        html! {
-                                            <option> { recipient } </option>
-                                        }
-                                    }).collect::<Html>()
-                                }
-                            </select>
-                        </div>
+                    <div class="select my-1">
+                        <select ref={ select_ref.clone() }>
+                            {
+                                send_whitelist.recipients.iter().enumerate().map(|(i, recipient)| {
+                                    html! {
+                                        <option selected={ i == 0 }> { recipient } </option>
+                                    }
+                                }).collect::<Html>()
+                            }
+                        </select>
                     </div>
                 </div>
             }

@@ -42,18 +42,43 @@ impl Component for BitcoinBook {
                 </header>
                 <main class="section">
                     <div class="columns">
-                        <div class="box column">
-                            <isds::Isds sim={ self.sim.clone() }>
-                                <isds::Wallet
-                                    full_node={ Some(self.wallet_node) }
-                                    address="Alice"
-                                    send_whitelist={
-                                        Some(isds::SendWhitelist::new(vec!["Bob", "Charlie"], wallet_send_amounts.clone()))
-                                    }
-                                />
-                                <isds::TimeUi show_fps=true />
-                                <isds::NetView />
-                            </isds::Isds>
+                        <div class="column is-two-thirds">
+                            <div class="box">
+                                <isds::Isds sim={ self.sim.clone() }>
+                                    <div class="columns">
+                                        <div class="column">
+                                            <isds::Wallet
+                                                full_node={ Some(self.wallet_node) }
+                                                address="Alice"
+                                                send_whitelist={
+                                                    Some(isds::SendWhitelist::new(
+                                                            vec!["Bob", "Charlie"],
+                                                            wallet_send_amounts.clone()
+                                                        )
+                                                    )
+                                                }
+                                                class="box"
+                                            />
+                                        </div>
+                                        <div class="column">
+                                            <isds::Wallet
+                                                full_node={ Some(self.wallet_node) }
+                                                address="Bob"
+                                                send_whitelist={
+                                                    Some(isds::SendWhitelist::new(
+                                                            vec!["Alice", "Charlie"],
+                                                            wallet_send_amounts.clone()
+                                                        )
+                                                    )
+                                                }
+                                                class="box"
+                                            />
+                                        </div>
+                                    </div>
+                                    <isds::TimeUi show_fps=true />
+                                    <isds::NetView />
+                                </isds::Isds>
+                            </div>
                         </div>
                         <div class="column">
                             {"Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet."}
