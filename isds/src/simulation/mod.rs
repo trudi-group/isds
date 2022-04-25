@@ -131,7 +131,8 @@ impl Simulation {
 
             // the speed of time changed for some reason!
             if self.time.speed() != last_speed {
-                remaining_real_time = remaining_real_time - (self.time.now() - reference_sim_time).into_inner() / last_speed;
+                remaining_real_time -=
+                    (self.time.now() - reference_sim_time).into_inner() / last_speed;
                 reference_sim_time = self.time.now();
                 last_speed = self.time.speed();
                 target_sim_time = self.time.after(remaining_real_time);

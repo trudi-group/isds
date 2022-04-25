@@ -289,9 +289,9 @@ mod tests {
         sim.do_now(ForSpecific(node1, MineBlock));
         sim.catch_up(100.);
 
-        let state1 = get_state(&mut sim, node1);
-        let state2 = get_state(&mut sim, node2);
-        let state3 = get_state(&mut sim, node3);
+        let state1 = get_state(&sim, node1);
+        let state2 = get_state(&sim, node2);
+        let state3 = get_state(&sim, node3);
 
         assert_eq!(state1.tip, state2.tip);
         assert_eq!(state1.tip, state3.tip);
@@ -316,9 +316,9 @@ mod tests {
         ));
         sim.catch_up(100.);
 
-        let state1 = get_state(&mut sim, node1);
-        let state2 = get_state(&mut sim, node2);
-        let state3 = get_state(&mut sim, node3);
+        let state1 = get_state(&sim, node1);
+        let state2 = get_state(&sim, node2);
+        let state3 = get_state(&sim, node3);
 
         assert!(!state1.txes_unconfirmed.is_empty());
         assert_eq!(state1.txes_unconfirmed, state2.txes_unconfirmed);
@@ -344,8 +344,8 @@ mod tests {
         sim.do_now(ForSpecific(node2, MineBlock));
         sim.catch_up(100.);
 
-        let state1 = get_state(&mut sim, node1);
-        let state2 = get_state(&mut sim, node2);
+        let state1 = get_state(&sim, node1);
+        let state2 = get_state(&sim, node2);
 
         assert!(state1.txes_unconfirmed.is_empty());
         assert!(state2.txes_unconfirmed.is_empty());
@@ -380,7 +380,7 @@ mod tests {
         sim.do_now(ForSpecific(node1, MineBlock));
         sim.catch_up(100.);
 
-        let mut state2 = get_state(&mut sim, node2);
+        let mut state2 = get_state(&sim, node2);
 
         assert!(state2.txes_unconfirmed.is_empty());
         assert!(!state2.txes_confirmed.is_empty());
@@ -412,8 +412,8 @@ mod tests {
         sim.do_now(ForSpecific(node3, MineBlock));
         sim.catch_up(100.);
 
-        let state1 = get_state(&mut sim, node1);
-        let state3 = get_state(&mut sim, node3);
+        let state1 = get_state(&sim, node1);
+        let state3 = get_state(&sim, node3);
 
         assert_ne!(state1.tip, state3.tip);
 
@@ -448,8 +448,8 @@ mod tests {
         sim.do_now(ForSpecific(node1, MineBlock));
         sim.catch_up(100.);
 
-        let state1 = get_state(&mut sim, node1);
-        let state3 = get_state(&mut sim, node3);
+        let state1 = get_state(&sim, node1);
+        let state3 = get_state(&sim, node3);
 
         assert_eq!(state1.tip, state3.tip);
     }
@@ -470,12 +470,12 @@ mod tests {
         }
 
         let tested_node = sim.pick_random_node().unwrap();
-        let state = get_state(&mut sim, tested_node);
+        let state = get_state(&sim, tested_node);
 
         let mut remaining_blocks = state.known_blocks.clone();
 
         let mut queue = vec![state.tip];
-        queue.extend(state.fork_tips.clone().into_iter().map(|id| Some(id)));
+        queue.extend(state.fork_tips.clone().into_iter().map(Some));
 
         while !queue.is_empty() {
             let block_id = queue.pop().unwrap();
@@ -514,8 +514,8 @@ mod tests {
 
         sim.catch_up(10.);
 
-        let state1 = get_state(&mut sim, node1);
-        let state2 = get_state(&mut sim, node2);
+        let state1 = get_state(&sim, node1);
+        let state2 = get_state(&sim, node2);
 
         assert_eq!(state1.height(state1.tip), state2.height(state2.tip));
         assert_eq!(state1.tip, state2.tip);

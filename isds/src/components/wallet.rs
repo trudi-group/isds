@@ -418,8 +418,7 @@ impl Wallet {
             .to_field_ref
             .cast::<HtmlInputElement>()
             .map(|ie| ie.value())
-            .map(|v| (!v.is_empty()).then(|| v))
-            .flatten()
+            .and_then(|v| (!v.is_empty()).then(|| v))
             .ok_or("Invalid \"to\" address.")?;
 
         let value = self
@@ -427,12 +426,9 @@ impl Wallet {
             .value_field_ref
             .cast::<HtmlInputElement>()
             .map(|ie| ie.value())
-            .map(|v| v.parse::<f64>().ok())
-            .flatten()
-            .map(|v| blockchain_types::toshis_from(v).try_into().ok())
-            .flatten()
-            .map(|v| (v > 0).then(|| v))
-            .flatten()
+            .and_then(|v| v.parse::<f64>().ok())
+            .and_then(|v| blockchain_types::toshis_from(v).try_into().ok())
+            .and_then(|v| (v > 0).then(|| v))
             .ok_or("Invalid \"value\".")?;
 
         Ok((from, to, value))
@@ -680,7 +676,7 @@ mod tests {
         let wallet_node = sim.pick_random_other_node(miner_node).unwrap();
         let mut cache = TransactionsCache::new("Bob".to_string());
         cache.full_node = Some(wallet_node);
-        cache.update(&mut sim);
+        cache.update(&sim);
 
         assert_eq!(cache.tip_height(), 3, "Cache didn't get all blocks?");
         assert_eq!(

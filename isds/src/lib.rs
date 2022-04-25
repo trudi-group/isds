@@ -87,16 +87,3 @@ impl Component for Isds {
         self._render_loop_handle = Some(handle);
     }
 }
-
-#[cfg(test)]
-mod tests {
-    // use super::*;
-    use wasm_bindgen_test::*;
-
-    wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
-
-    #[wasm_bindgen_test]
-    fn tests_work() {
-        assert!(true);
-    }
-}

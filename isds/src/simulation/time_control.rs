@@ -23,20 +23,17 @@ impl EventHandler for SlowDownOnMessages {
         if let Event::Node(_, event) = event {
             match event {
                 NodeEvent::MessageSent(message) => {
-                    sim.log("sent".to_string());
                     if (self.is_relevant_message)(message, &sim.world) {
                         if self.messages_in_flight == 0 {
                             self.regular_speed = sim.time.speed();
                             sim.time.set_speed(self.slow_speed);
                         }
-                        self.messages_in_flight += 1;
+                        self.messages_in_flight = self.messages_in_flight.saturating_add(1);
                     }
                 }
                 NodeEvent::MessageArrived(message) => {
-                    sim.log("arrived".to_string());
                     if (self.is_relevant_message)(message, &sim.world) {
-                        self.messages_in_flight =
-                            self.messages_in_flight.checked_sub(1).unwrap_or(0);
+                        self.messages_in_flight = self.messages_in_flight.saturating_sub(1);
                         if self.messages_in_flight == 0 {
                             sim.time.set_speed(self.regular_speed);
                         }

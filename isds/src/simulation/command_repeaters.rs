@@ -157,12 +157,7 @@ mod tests {
         sim.catch_up(1000.);
 
         let expected_min = 2;
-        let actual = sim
-            .world
-            .query_mut::<&bool>()
-            .into_iter()
-            .map(|(_, &b)| b)
-            .count();
+        let actual = sim.world.query_mut::<&bool>().into_iter().count();
         assert!(actual >= expected_min);
     }
 }

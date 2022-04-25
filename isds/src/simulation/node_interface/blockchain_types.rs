@@ -120,6 +120,7 @@ impl<'a> NodeInterface<'a> {
 }
 
 #[cfg(test)]
+#[allow(clippy::redundant_clone)]
 mod tests {
     use super::*;
     use wasm_bindgen_test::*;
