@@ -126,13 +126,7 @@ impl Simulation {
     }
     pub fn send_message<P: Payload>(&mut self, source: Entity, dest: Entity, payload: P) -> Entity {
         let start_time = self.time.now();
-        let (arrival_time, message_entity) =
-            self.spawn_message_entity(source, dest, start_time, payload);
-        self.schedule_at(
-            arrival_time,
-            Event::Node(dest, NodeEvent::MessageArrived(message_entity)),
-        );
-        message_entity
+        self.spawn_and_schedule_message(source, dest, start_time, payload)
     }
     pub fn send_messages<P: Payload>(
         &mut self,
@@ -144,16 +138,23 @@ impl Simulation {
         let mut start_time = self.time.now();
         let mut message_entities = vec![];
         for payload in payloads.into_iter() {
-            let (arrival_time, message_entity) =
-                self.spawn_message_entity(source, dest, start_time, payload);
-            self.schedule_at(
-                arrival_time,
-                Event::Node(dest, NodeEvent::MessageArrived(message_entity)),
-            );
+            let message_entity = self.spawn_and_schedule_message(source, dest, start_time, payload);
             message_entities.push(message_entity);
             start_time += per_message_delay;
         }
         message_entities
+    }
+    fn spawn_and_schedule_message<P: Payload>(
+        &mut self,
+        source: Entity,
+        dest: Entity,
+        start_time: SimSeconds,
+        payload: P,
+    ) -> Entity {
+        let (arrival_time, message_entity) =
+            self.spawn_message_entity(source, dest, start_time, payload);
+        self.schedule_message(source, dest, message_entity, arrival_time);
+        message_entity
     }
     fn spawn_message_entity<P: Payload>(
         &mut self,
@@ -175,6 +176,19 @@ impl Simulation {
             payload,
         ));
         (end_time, message_entity)
+    }
+    fn schedule_message(
+        &mut self,
+        source: Entity,
+        dest: Entity,
+        message_entity: Entity,
+        arrival_time: OrderedFloat<f64>,
+    ) {
+        self.schedule_now(Event::Node(source, NodeEvent::MessageSent(message_entity)));
+        self.schedule_at(
+            arrival_time,
+            Event::Node(dest, NodeEvent::MessageArrived(message_entity)),
+        );
     }
 }
 

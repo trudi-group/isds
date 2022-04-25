@@ -145,6 +145,13 @@ fn init_simulation() -> isds::Simulation {
         isds::ForRandomNode(isds::nakamoto_consensus::MineBlock),
         isds::SimSeconds::from(600.),
     ));
+
+    // make time run slower when messages are in-flight
+    sim.add_event_handler(isds::SlowDownOnMessages::new(0.01, |_, _| true));
+
+    // switch to real time
+    sim.time.set_speed(1.);
+
     sim
 }
 

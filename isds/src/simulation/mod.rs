@@ -21,6 +21,7 @@ mod peers;
 mod protocol;
 mod shared;
 mod time;
+mod time_control;
 mod underlay;
 
 use despawner::Despawner;
@@ -33,6 +34,7 @@ pub use node_interface::{blockchain_types, NodeInterface};
 pub use protocol::{InvokeProtocolForAllNodes, Payload, PokeNode, PokeSpecificNode, Protocol};
 pub use shared::*;
 pub use time::{OrderedFloat, RealSeconds, SimSeconds, Time, TimeSpan};
+pub use time_control::SlowDownOnMessages;
 
 pub use peers::*;
 pub use underlay::*;
@@ -46,6 +48,7 @@ pub enum Event {
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum NodeEvent {
+    MessageSent(Entity),
     MessageArrived(Entity),
     TimerFired(Entity),
     PeerSetChanged(PeerSetUpdate),
@@ -99,23 +102,49 @@ impl Simulation {
     pub fn schedule_at(&mut self, time_due: SimSeconds, event: Event) {
         self.event_queue.push(time_due, event);
     }
-    pub fn catch_up(&mut self, elapsed_real_time: RealSeconds) {
-        self.work_until(self.time.after(elapsed_real_time))
-    }
-    pub fn work_until(&mut self, sim_time: SimSeconds) {
+    pub fn work_until(&mut self, target_sim_time: SimSeconds) {
         while self
             .event_queue
             .peek()
-            .filter(|&(time_due, _)| time_due <= sim_time)
+            .filter(|&(time_due, _)| time_due <= target_sim_time)
             .is_some()
         {
-            let (time_due, event) = self.event_queue.pop().unwrap();
-            self.time.advance_sim_time_to(time_due);
-            if let Err(e) = self.handle_event(event) {
-                self.log(format!("Error handling event: {}", e));
+            self.process_next_event();
+        }
+        self.time.advance_sim_time_to(target_sim_time);
+    }
+    pub fn catch_up(&mut self, elapsed_real_time: RealSeconds) {
+        // a bit complicated because we need to account for the possibility that the speed of time
+        // changes mid-way; otherwise like `work_until`
+        let mut reference_sim_time = self.time.now();
+        let mut remaining_real_time = elapsed_real_time;
+        let mut last_speed = self.time.speed();
+        let mut target_sim_time = self.time.after(remaining_real_time);
+
+        while self
+            .event_queue
+            .peek()
+            .filter(|&(time_due, _)| time_due <= target_sim_time)
+            .is_some()
+        {
+            self.process_next_event();
+
+            // the speed of time changed for some reason!
+            if self.time.speed() != last_speed {
+                remaining_real_time = remaining_real_time - (self.time.now() - reference_sim_time).into_inner() / last_speed;
+                reference_sim_time = self.time.now();
+                last_speed = self.time.speed();
+                target_sim_time = self.time.after(remaining_real_time);
             }
         }
-        self.time.advance_sim_time_to(sim_time);
+        self.time.advance_sim_time_to(target_sim_time);
+    }
+    pub fn process_next_event(&mut self) {
+        let (time_due, event) = self.event_queue.pop().unwrap();
+        self.time.advance_sim_time_to(time_due);
+        if let Err(e) = self.handle_event(event) {
+            self.log(format!("Error handling event: {}", e));
+        }
     }
     fn handle_event(&mut self, event: Event) -> Result<(), Box<dyn Error>> {
         command::Handler.handle_event(self, event)?;

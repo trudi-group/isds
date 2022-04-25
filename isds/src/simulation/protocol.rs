@@ -66,6 +66,9 @@ impl<P: Protocol> InvokeProtocolForAllNodes<P> {
         event: NodeEvent,
     ) -> Result<(), Box<dyn Error>> {
         match event {
+            NodeEvent::MessageSent(_) => {
+                // I probably either know about this already or it's not my business
+            }
             NodeEvent::MessageArrived(message) => {
                 if let Ok((underlay_message, payload)) = sim
                     .world
