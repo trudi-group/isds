@@ -5,9 +5,12 @@ use yew::prelude::*;
 #[macro_use]
 mod utils;
 
+mod user;
+use user::User;
+
 struct BitcoinBook {
     sim: SharedSimulation,
-    wallet_node: isds::Entity,
+    users: Vec<User>,
     slowdown_handler_index: usize,
     _key_listener: gloo::events::EventListener,
 }
@@ -17,21 +20,26 @@ impl Component for BitcoinBook {
     type Properties = ();
 
     fn create(_: &Context<Self>) -> Self {
-        let sim = init_simulation().into_shared();
+        let mut sim = init_simulation();
 
         // add handler to make time run slower when messages are in-flight
-        let slowdown_handler_index = sim
-            .borrow_mut()
-            .add_event_handler(isds::SlowDownOnMessages::new(0.01, |_, _| true, true));
+        let slowdown_handler_index =
+            sim.add_event_handler(isds::SlowDownOnMessages::new(0.01, |_, _| true, true));
 
         // switch to real time
-        sim.borrow_mut().time.set_speed(1.);
+        sim.time.set_speed(1.);
 
-        let wallet_node = sim.borrow_mut().pick_random_node().unwrap();
+        let users = vec![
+            User::new("Alice", Some(sim.pick_random_node().unwrap()), true),
+            User::new("Bob", Some(sim.pick_random_node().unwrap()), true),
+            User::new("Charlie", None, false),
+        ];
+
+        let sim = sim.into_shared();
         let _key_listener = init_keyboard_listener(sim.clone());
         Self {
             sim,
-            wallet_node,
+            users,
             slowdown_handler_index,
             _key_listener,
         }
@@ -57,34 +65,32 @@ impl Component for BitcoinBook {
                             <div class="box">
                                 <isds::Isds sim={ self.sim.clone() }>
                                     <div class="columns">
-                                        <div class="column">
-                                            <isds::Wallet
-                                                full_node={ Some(self.wallet_node) }
-                                                address="Alice"
-                                                send_whitelist={
-                                                    Some(isds::SendWhitelist::new(
-                                                            vec!["Bob", "Charlie"],
-                                                            wallet_send_amounts.clone()
-                                                        )
-                                                    )
-                                                }
-                                                class="box"
-                                            />
-                                        </div>
-                                        <div class="column">
-                                            <isds::Wallet
-                                                full_node={ Some(self.wallet_node) }
-                                                address="Bob"
-                                                send_whitelist={
-                                                    Some(isds::SendWhitelist::new(
-                                                            vec!["Alice", "Charlie"],
-                                                            wallet_send_amounts.clone()
-                                                        )
-                                                    )
-                                                }
-                                                class="box"
-                                            />
-                                        </div>
+                                        {
+                                            self.users
+                                                .iter()
+                                                .filter(|user| user.show_wallet)
+                                                .map(|user| html!{
+                                                    <div class="column">
+                                                        <isds::Wallet
+                                                            full_node={ user.wallet_node }
+                                                            address={ user.name.clone() }
+                                                            send_whitelist={
+                                                                Some(isds::SendWhitelist::new(
+                                                                        self.users
+                                                                            .iter()
+                                                                            .filter(|u| *u != user)
+                                                                            .map(|u| &u.name)
+                                                                            .cloned()
+                                                                            .collect(),
+                                                                        wallet_send_amounts.clone()
+                                                                    )
+                                                                )
+                                                            }
+                                                            class="box"
+                                                        />
+                                                    </div>
+                                                }).collect::<Html>()
+                                        }
                                     </div>
                                     <isds::TimeUi
                                         show_fps=true

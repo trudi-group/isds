@@ -43,12 +43,11 @@ pub struct SendWhitelist {
     pub recipients: Vec<Address>,
 }
 impl SendWhitelist {
-    pub fn new(recipients: Vec<&str>, coin_amounts: Vec<f64>) -> Self {
+    pub fn new(recipients: Vec<String>, coin_amounts: Vec<f64>) -> Self {
         let amounts = coin_amounts
             .into_iter()
             .map(|c| blockchain_types::toshis_from(c) as u64)
             .collect();
-        let recipients = recipients.into_iter().map(|s| s.to_string()).collect();
         Self {
             amounts,
             recipients,
@@ -243,11 +242,8 @@ impl Wallet {
                 .recipients
                 .clone();
             ctx.link().callback(move |_| {
-                let selected_index = select_ref_clone
-                    .cast::<HtmlSelectElement>()
-                    .unwrap()
-                    .selected_index() as usize;
-                let recipient = recipients_clone[selected_index].clone();
+                let recipient = get_selected_recipient(&recipients_clone, &select_ref_clone)
+                    .unwrap_or_else(|| "???".to_string());
                 Msg::BroadcastNewTransactionFromWhitelist(amount, recipient)
             })
         };
@@ -266,9 +262,15 @@ impl Wallet {
                         {
                             send_whitelist.amounts.iter().map(|amount| {
                                 let disabled = ctx.props().full_node.is_some() && *amount > balance;
+                                let amount_in_coins = blockchain_types::coins_from(*amount as i64);
                                 html! {
-                                    <button class="button mb-0" onclick={ onclick(*amount) } disabled={ disabled }>
-                                        { blockchain_types::coins_from(*amount as i64) }
+                                    <button
+                                        class="button mb-0"
+                                        onclick={ onclick(*amount) }
+                                        disabled={ disabled }
+                                        title={ format!("Send {amount_in_coins} coins now") }
+                                    >
+                                        { amount_in_coins }
                                     </button>
                                 }
                             }).collect::<Html>()
@@ -625,6 +627,14 @@ fn get_transaction_unchecked(tx_id: Entity, sim: &Simulation) -> hecs::Ref<Trans
 
 fn get_state(node_id: Entity, sim: &Simulation) -> Option<hecs::Ref<NakamotoNodeState>> {
     sim.world.get::<NakamotoNodeState>(node_id).ok()
+}
+
+fn get_selected_recipient(recipients: &[String], select_ref: &NodeRef) -> Option<String> {
+    select_ref
+        .cast::<HtmlSelectElement>()
+        .map(|el| el.selected_index() as usize)
+        .and_then(|selected_index| recipients.get(selected_index))
+        .cloned()
 }
 
 #[cfg(test)]
