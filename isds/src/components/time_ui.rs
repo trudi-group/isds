@@ -59,25 +59,33 @@ pub fn time_controls() -> Html {
 
     html! {
         <>
-            <button class="button" onclick={ on_pause_play }>
-                if context.sim.borrow().time.paused() {
+            if context.sim.borrow().time.paused() {
+                <button class="button" onclick={ on_pause_play } title="Resume">
                     <span class="icon">
                         <i class="fas fa-play"></i>
                     </span>
-                } else {
+                </button>
+            } else {
+                <button class="button" onclick={ on_pause_play } title="Pause">
                     <span class="icon">
                         <i class="fas fa-pause"></i>
                     </span>
-                }
-            </button>
-            <button class="button" onclick={ on_slower }>
+                </button>
+            }
+            <button class="button" onclick={ on_slower } title="Slow down">
                 <span class="icon">
-                    <i class="fas fa-backward"></i>
+                    <i class="fas fa-tachometer-alt"></i>
+                </span>
+                <span class="icon">
+                    <i class="fas fa-arrow-down"></i>
                 </span>
             </button>
-            <button class="button" onclick={ on_faster }>
+            <button class="button" onclick={ on_faster } title="Speed up">
                 <span class="icon">
-                    <i class="fas fa-forward"></i>
+                    <i class="fas fa-tachometer-alt"></i>
+                </span>
+                <span class="icon">
+                    <i class="fas fa-arrow-up"></i>
                 </span>
             </button>
         </>
@@ -113,7 +121,7 @@ pub fn slowdown_checkbox(props: &SlowdownCheckboxProps) -> Html {
                 .additional_event_handlers()
                 .borrow()
                 .get::<SlowDownOnMessages>(i)
-                .map(|h| h.is_active())
+                .map(|h| h.is_enabled())
         })
         .unwrap_or(false);
 
@@ -126,7 +134,7 @@ pub fn slowdown_checkbox(props: &SlowdownCheckboxProps) -> Html {
                     .borrow_mut()
                     .get_mut::<SlowDownOnMessages>(handler_index)
                 {
-                    slowdown_handler.toggle_active(&mut sim);
+                    slowdown_handler.toggle_enabled(&mut sim);
                 }
             })
         } else {
@@ -136,12 +144,32 @@ pub fn slowdown_checkbox(props: &SlowdownCheckboxProps) -> Html {
 
     html! {
         <>
-            <div class="checkbox" disabled={ !config_ok }>
-                <input type="checkbox" onclick={ toggle_slowdown } checked={ slowdown_is_active } />
-                <label class="ml-1">
-                    { "slow down on messages" }
-                </label>
-            </div>
+            <button
+                class="button is-small"
+                onclick={ toggle_slowdown }
+                disabled={ !config_ok }
+                title ={
+                    if slowdown_is_active {
+                        "Don't slow down on messages"
+                    } else {
+                        "Slow down on messages"
+                    }
+                }
+            >
+                <span class="icon">
+                    <i class="fas fa-envelope"></i>
+                </span>
+                <span class="icon">
+                    <i class="fas fa-tachometer-alt"></i>
+                </span>
+                <span class="icon">
+                    if slowdown_is_active {
+                        <i class="fas fa-arrow-right"></i>
+                    } else {
+                        <i class="fas fa-arrow-down"></i>
+                    }
+                </span>
+            </button>
         </>
     }
 }

@@ -17,8 +17,16 @@ impl Component for BitcoinBook {
     type Properties = ();
 
     fn create(_: &Context<Self>) -> Self {
-        let (sim, slowdown_handler_index) = init_simulation();
-        let sim = sim.into_shared();
+        let sim = init_simulation().into_shared();
+
+        // add handler to make time run slower when messages are in-flight
+        let slowdown_handler_index = sim
+            .borrow_mut()
+            .add_event_handler(isds::SlowDownOnMessages::new(0.01, |_, _| true, true));
+
+        // switch to real time
+        sim.borrow_mut().time.set_speed(1.);
+
         let wallet_node = sim.borrow_mut().pick_random_node().unwrap();
         let _key_listener = init_keyboard_listener(sim.clone());
         Self {
@@ -110,7 +118,7 @@ fn init_keyboard_listener(sim: SharedSimulation) -> gloo::events::EventListener 
     })
 }
 
-fn init_simulation() -> (isds::Simulation, usize) {
+fn init_simulation() -> isds::Simulation {
     let mut sim = isds::Simulation::new_with_underlay_dimensions(400., 200.);
     sim.add_event_handler(isds::InvokeProtocolForAllNodes(
         isds::nakamoto_consensus::NakamotoConsensus::default(),
@@ -152,14 +160,7 @@ fn init_simulation() -> (isds::Simulation, usize) {
         isds::SimSeconds::from(600.),
     ));
 
-    // make time run slower when messages are in-flight
-    let slowdown_handler_index =
-        sim.add_event_handler(isds::SlowDownOnMessages::new(0.01, |_, _| true));
-
-    // switch to real time
-    sim.time.set_speed(1.);
-
-    (sim, slowdown_handler_index)
+    sim
 }
 
 fn main() {

@@ -5,10 +5,14 @@ pub struct SlowDownOnMessages {
     regular_speed: f64,
     is_relevant_message: fn(Entity, &World) -> bool,
     messages_in_flight: usize,
-    is_active: bool,
+    is_enabled: bool,
 }
 impl SlowDownOnMessages {
-    pub fn new(slow_speed: f64, is_relevant_message: fn(Entity, &World) -> bool) -> Self {
+    pub fn new(
+        slow_speed: f64,
+        is_relevant_message: fn(Entity, &World) -> bool,
+        is_enabled: bool,
+    ) -> Self {
         let messages_in_flight = 0;
         let regular_speed = Default::default(); // will be initialized once we detect a message
         Self {
@@ -16,25 +20,25 @@ impl SlowDownOnMessages {
             is_relevant_message,
             messages_in_flight,
             regular_speed,
-            is_active: true,
+            is_enabled,
         }
     }
-    pub fn is_active(&self) -> bool {
-        self.is_active
+    pub fn is_enabled(&self) -> bool {
+        self.is_enabled
     }
-    pub fn toggle_active(&mut self, sim: &mut Simulation) {
-        if self.is_active() {
-            self.deactivate(sim)
+    pub fn toggle_enabled(&mut self, sim: &mut Simulation) {
+        if self.is_enabled() {
+            self.disable(sim)
         } else {
-            self.activate()
+            self.enable()
         }
     }
-    pub fn activate(&mut self) {
+    pub fn enable(&mut self) {
         // we deliberately skip the complexity of counting in-flight messages in `World`
-        self.is_active = true;
+        self.is_enabled = true;
     }
-    pub fn deactivate(&mut self, sim: &mut Simulation) {
-        self.is_active = false;
+    pub fn disable(&mut self, sim: &mut Simulation) {
+        self.is_enabled = false;
         if self.messages_in_flight > 0 {
             self.messages_in_flight = 0;
             sim.time.set_speed(self.regular_speed);
@@ -43,7 +47,7 @@ impl SlowDownOnMessages {
 }
 impl EventHandler for SlowDownOnMessages {
     fn handle_event(&mut self, sim: &mut Simulation, event: Event) -> Result<(), Box<dyn Error>> {
-        if self.is_active {
+        if self.is_enabled {
             if let Event::Node(_, event) = event {
                 match event {
                     NodeEvent::MessageSent(message) => {
@@ -83,7 +87,7 @@ mod tests {
         let slow_speed = 0.000023;
 
         let mut sim = Simulation::new();
-        sim.add_event_handler(SlowDownOnMessages::new(slow_speed, |_, _| true));
+        sim.add_event_handler(SlowDownOnMessages::new(slow_speed, |_, _| true, true));
 
         let regular_speed = sim.time.speed();
 
@@ -124,7 +128,7 @@ mod tests {
         let slow_speed = 0.; // pause so we can catch that
 
         let mut sim = Simulation::new();
-        sim.add_event_handler(SlowDownOnMessages::new(slow_speed, |_, _| true));
+        sim.add_event_handler(SlowDownOnMessages::new(slow_speed, |_, _| true, true));
 
         sim.time.set_speed(10000000000.);
 
