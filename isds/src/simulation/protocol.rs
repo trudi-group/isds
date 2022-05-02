@@ -23,7 +23,7 @@ impl Command for PokeSpecificNode {
 pub trait Payload: 'static + Send + Sync + Clone {}
 impl<T> Payload for T where T: 'static + Send + Sync + Clone {}
 
-pub trait Protocol {
+pub trait Protocol: 'static {
     type MessagePayload: Payload;
 
     /// What to do once we got a message (of type `MessagePayload`).

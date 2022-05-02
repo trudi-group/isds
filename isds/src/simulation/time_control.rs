@@ -5,6 +5,7 @@ pub struct SlowDownOnMessages {
     regular_speed: f64,
     is_relevant_message: fn(Entity, &World) -> bool,
     messages_in_flight: usize,
+    is_active: bool,
 }
 impl SlowDownOnMessages {
     pub fn new(slow_speed: f64, is_relevant_message: fn(Entity, &World) -> bool) -> Self {
@@ -15,32 +16,56 @@ impl SlowDownOnMessages {
             is_relevant_message,
             messages_in_flight,
             regular_speed,
+            is_active: true,
+        }
+    }
+    pub fn is_active(&self) -> bool {
+        self.is_active
+    }
+    pub fn toggle_active(&mut self, sim: &mut Simulation) {
+        if self.is_active() {
+            self.deactivate(sim)
+        } else {
+            self.activate()
+        }
+    }
+    pub fn activate(&mut self) {
+        // we deliberately skip the complexity of counting in-flight messages in `World`
+        self.is_active = true;
+    }
+    pub fn deactivate(&mut self, sim: &mut Simulation) {
+        self.is_active = false;
+        if self.messages_in_flight > 0 {
+            self.messages_in_flight = 0;
+            sim.time.set_speed(self.regular_speed);
         }
     }
 }
 impl EventHandler for SlowDownOnMessages {
     fn handle_event(&mut self, sim: &mut Simulation, event: Event) -> Result<(), Box<dyn Error>> {
-        if let Event::Node(_, event) = event {
-            match event {
-                NodeEvent::MessageSent(message) => {
-                    if (self.is_relevant_message)(message, &sim.world) {
-                        if self.messages_in_flight == 0 {
-                            self.regular_speed = sim.time.speed();
-                            sim.time.set_speed(self.slow_speed);
-                        }
-                        self.messages_in_flight = self.messages_in_flight.saturating_add(1);
-                    }
-                }
-                NodeEvent::MessageArrived(message) => {
-                    if (self.is_relevant_message)(message, &sim.world) {
-                        self.messages_in_flight = self.messages_in_flight.saturating_sub(1);
-                        if self.messages_in_flight == 0 {
-                            sim.time.set_speed(self.regular_speed);
+        if self.is_active {
+            if let Event::Node(_, event) = event {
+                match event {
+                    NodeEvent::MessageSent(message) => {
+                        if (self.is_relevant_message)(message, &sim.world) {
+                            if self.messages_in_flight == 0 {
+                                self.regular_speed = sim.time.speed();
+                                sim.time.set_speed(self.slow_speed);
+                            }
+                            self.messages_in_flight = self.messages_in_flight.saturating_add(1);
                         }
                     }
-                }
-                _ => {}
-            };
+                    NodeEvent::MessageArrived(message) => {
+                        if (self.is_relevant_message)(message, &sim.world) {
+                            self.messages_in_flight = self.messages_in_flight.saturating_sub(1);
+                            if self.messages_in_flight == 0 {
+                                sim.time.set_speed(self.regular_speed);
+                            }
+                        }
+                    }
+                    _ => {}
+                };
+            }
         }
         Ok(())
     }

@@ -8,12 +8,15 @@ pub use rand::prelude::{IteratorRandom, Rng, SliceRandom};
 pub use std::error::Error;
 
 use rand::rngs::ThreadRng;
+use std::any::Any;
+use std::cell::RefCell;
 use std::collections::VecDeque;
-use std::mem;
+use std::rc::Rc;
 
 mod command;
 mod command_repeaters;
 mod despawner;
+mod event_handlers;
 mod event_queue;
 mod logger;
 mod node_interface;
@@ -28,6 +31,7 @@ use despawner::Despawner;
 
 pub use command::{Command, EntityAction, ForSpecific};
 pub use command_repeaters::{AtRandomIntervals, AtStaticIntervals, MultipleTimes};
+pub use event_handlers::{EventHandler, EventHandlers};
 pub use event_queue::EventQueue;
 pub use logger::Logger;
 pub use node_interface::{blockchain_types, NodeInterface};
@@ -55,10 +59,6 @@ pub enum NodeEvent {
     Poke,
 }
 
-pub trait EventHandler {
-    fn handle_event(&mut self, sim: &mut Simulation, event: Event) -> Result<(), Box<dyn Error>>;
-}
-
 #[readonly::make]
 pub struct Simulation {
     pub time: Time,
@@ -69,7 +69,7 @@ pub struct Simulation {
     #[readonly]
     pub logger: Logger,
 
-    additional_event_handlers: Vec<Box<dyn EventHandler>>,
+    additional_event_handlers: Rc<RefCell<EventHandlers>>,
     underlay_config: UnderlayConfig,
 
     event_queue: EventQueue,
@@ -84,14 +84,20 @@ impl Simulation {
             time: Time::new(0.1),
             world: World::new(),
             logger: Logger::new(),
-            additional_event_handlers: vec![],
+            additional_event_handlers: Rc::new(RefCell::new(EventHandlers::new())),
             underlay_config: UnderlayConfig::new(width, height),
             event_queue: EventQueue::new(),
             rng: rand::thread_rng(),
         }
     }
-    pub fn add_event_handler(&mut self, event_handler: impl EventHandler + 'static) {
-        self.additional_event_handlers.push(Box::new(event_handler))
+    /// Returns the index of the event handler, in case you want to modify it later.
+    pub fn add_event_handler(&mut self, event_handler: impl EventHandler + 'static) -> usize {
+        self.additional_event_handlers
+            .borrow_mut()
+            .add(event_handler)
+    }
+    pub fn additional_event_handlers(&self) -> Rc<RefCell<EventHandlers>> {
+        Rc::clone(&self.additional_event_handlers)
     }
     pub fn schedule_now(&mut self, event: Event) {
         self.schedule_at(self.time.now(), event)
@@ -150,16 +156,9 @@ impl Simulation {
     fn handle_event(&mut self, event: Event) -> Result<(), Box<dyn Error>> {
         command::Handler.handle_event(self, event)?;
 
-        // TODO clean this up by splitting `Simulation` into something like `Logic` and `State`
-        let mut additional_event_handlers = mem::take(&mut self.additional_event_handlers);
-        for handler in additional_event_handlers.iter_mut() {
-            handler.handle_event(self, event)?;
-        }
-        let new_handlers = mem::replace(
-            &mut self.additional_event_handlers,
-            additional_event_handlers,
-        );
-        debug_assert!(new_handlers.is_empty());
+        Rc::clone(&self.additional_event_handlers)
+            .borrow_mut()
+            .handle_event(self, event)?;
 
         Despawner.handle_event(self, event)?;
         Ok(())

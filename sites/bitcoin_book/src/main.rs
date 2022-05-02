@@ -8,6 +8,7 @@ mod utils;
 struct BitcoinBook {
     sim: SharedSimulation,
     wallet_node: isds::Entity,
+    slowdown_handler_index: usize,
     _key_listener: gloo::events::EventListener,
 }
 
@@ -16,12 +17,14 @@ impl Component for BitcoinBook {
     type Properties = ();
 
     fn create(_: &Context<Self>) -> Self {
-        let sim = init_simulation().into_shared();
+        let (sim, slowdown_handler_index) = init_simulation();
+        let sim = sim.into_shared();
         let wallet_node = sim.borrow_mut().pick_random_node().unwrap();
         let _key_listener = init_keyboard_listener(sim.clone());
         Self {
             sim,
             wallet_node,
+            slowdown_handler_index,
             _key_listener,
         }
     }
@@ -75,7 +78,10 @@ impl Component for BitcoinBook {
                                             />
                                         </div>
                                     </div>
-                                    <isds::TimeUi show_fps=true />
+                                    <isds::TimeUi
+                                        show_fps=true
+                                        slowdown_handler_index={ Some(self.slowdown_handler_index) }
+                                    />
                                     <isds::NetView />
                                 </isds::Isds>
                             </div>
@@ -104,7 +110,7 @@ fn init_keyboard_listener(sim: SharedSimulation) -> gloo::events::EventListener 
     })
 }
 
-fn init_simulation() -> isds::Simulation {
+fn init_simulation() -> (isds::Simulation, usize) {
     let mut sim = isds::Simulation::new_with_underlay_dimensions(400., 200.);
     sim.add_event_handler(isds::InvokeProtocolForAllNodes(
         isds::nakamoto_consensus::NakamotoConsensus::default(),
@@ -147,12 +153,13 @@ fn init_simulation() -> isds::Simulation {
     ));
 
     // make time run slower when messages are in-flight
-    sim.add_event_handler(isds::SlowDownOnMessages::new(0.01, |_, _| true));
+    let slowdown_handler_index =
+        sim.add_event_handler(isds::SlowDownOnMessages::new(0.01, |_, _| true));
 
     // switch to real time
     sim.time.set_speed(1.);
 
-    sim
+    (sim, slowdown_handler_index)
 }
 
 fn main() {
