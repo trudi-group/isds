@@ -20,7 +20,7 @@ impl Component for NakamotoStandalone {
     fn view(&self, _: &Context<Self>) -> Html {
         html! {
             <isds::Isds sim={ self.sim.clone() }>
-                <div style="margin-bottom: -50px"> // chosen based on `buffer_space` of `NetView`
+                <div style="margin-bottom: -30px"> // chosen based on height of TimeUi level
                     <isds::TimeUi />
                 </div>
                 <isds::NetView />

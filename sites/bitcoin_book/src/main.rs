@@ -61,7 +61,7 @@ impl Component for BitcoinBook {
                 </header>
                 <main class="section">
                     <div class="columns">
-                        <div class="column is-two-thirds">
+                        <div class="column is-two-thirds-desktop">
                             <div class="box">
                                 <isds::Isds sim={ self.sim.clone() }>
                                     <div class="columns">
@@ -93,7 +93,7 @@ impl Component for BitcoinBook {
                                         }
                                     </div>
                                     <isds::TimeUi
-                                        show_fps=true
+                                        show_fps=false
                                         slowdown_handler_index={ Some(self.slowdown_handler_index) }
                                     />
                                     <isds::NetView />
@@ -102,6 +102,7 @@ impl Component for BitcoinBook {
                         </div>
                         <div class="column">
                             { include_markdown_content!("../assets/wallets.md") }
+                            <p><em>{ "...work in progress..." }</em></p>
                         </div>
                     </div>
                 </main>
