@@ -48,7 +48,7 @@ impl Component for BitcoinBook {
     fn view(&self, _: &Context<Self>) -> Html {
         let wallet_send_amounts = vec![0.5, 1., 5., 10.];
         html! {
-            <>
+            <isds::Isds sim={ self.sim.clone() }>
                 <header class="section">
                     // <nav class="breadcrumb" aria-label="navigation">
                     //     <ul>
@@ -60,69 +60,55 @@ impl Component for BitcoinBook {
                     { include_markdown_content!("../assets/intro.md") }
                 </header>
                 <main class="section">
-                    <div class="columns">
-                        <div class="column is-two-thirds-desktop">
-                            <div class="box">
-                                <isds::Isds sim={ self.sim.clone() }>
-                                    <div class="columns">
-                                        {
-                                            self.users
-                                                .iter()
-                                                .filter(|user| user.show_wallet)
-                                                .map(|user| html!{
-                                                    <div class="column">
-                                                        <isds::Wallet
-                                                            full_node={ user.wallet_node }
-                                                            address={ user.name.clone() }
-                                                            send_whitelist={
-                                                                Some(isds::SendWhitelist::new(
-                                                                        self.users
-                                                                            .iter()
-                                                                            .filter(|u| *u != user)
-                                                                            .map(|u| &u.name)
-                                                                            .cloned()
-                                                                            .collect(),
-                                                                        wallet_send_amounts.clone()
-                                                                    )
-                                                                )
-                                                            }
-                                                            class="box"
-                                                        />
-                                                    </div>
-                                                }).collect::<Html>()
-                                        }
-                                    </div>
-                                    <isds::TimeUi
-                                        show_fps=false
-                                        slowdown_handler_index={ Some(self.slowdown_handler_index) }
-                                    />
-                                    <isds::NetView />
-                                </isds::Isds>
+                    { view_layer(
+                        html!{
+                            <div class="columns">
+                                {
+                                    self.users
+                                        .iter()
+                                        .filter(|user| user.show_wallet)
+                                        .map(|user| html!{
+                                            <div class="column">
+                                                <isds::Wallet
+                                                    full_node={ user.wallet_node }
+                                                    address={ user.name.clone() }
+                                                    send_whitelist={
+                                                        Some(isds::SendWhitelist::new(
+                                                                self.users
+                                                                    .iter()
+                                                                    .filter(|u| *u != user)
+                                                                    .map(|u| &u.name)
+                                                                    .cloned()
+                                                                    .collect(),
+                                                                wallet_send_amounts.clone()
+                                                            )
+                                                        )
+                                                    }
+                                                    class="box"
+                                                />
+                                            </div>
+                                        }).collect::<Html>()
+                                }
                             </div>
-                        </div>
-                        <div class="column">
-                            { include_markdown_content!("../assets/wallets.md") }
-                            <p><em>{ "...work in progress..." }</em></p>
-                        </div>
-                    </div>
+                        },
+                        include_markdown_content!("../assets/wallets.md")
+                    )}
+                    { view_layer(
+                        html!{
+                            <>
+                                <isds::TimeUi
+                                    show_fps=false
+                                    slowdown_handler_index={ Some(self.slowdown_handler_index) }
+                                />
+                                <isds::NetView />
+                            </>
+                        },
+                        include_markdown_content!("../assets/netview.md")
+                    )}
                 </main>
-            </>
+            </isds::Isds>
         }
     }
-}
-
-fn init_keyboard_listener(sim: SharedSimulation) -> gloo::events::EventListener {
-    let window = gloo::utils::window();
-    gloo::events::EventListener::new(&window, "keydown", move |event| {
-        let e = event.clone().dyn_into::<web_sys::KeyboardEvent>().unwrap();
-        match e.key().as_str() {
-            " " => sim.borrow_mut().time.toggle_paused(),
-            "ArrowLeft" => sim.borrow_mut().time.slow_down_tenfold_clamped(),
-            "ArrowRight" => sim.borrow_mut().time.speed_up_tenfold_clamped(),
-            "m" => sim.borrow_mut().do_now(isds::ForRandomNode(isds::PokeNode)),
-            _ => log!("Unmapped key pressed: {:?}", e),
-        }
-    })
 }
 
 fn init_simulation() -> isds::Simulation {
@@ -168,6 +154,35 @@ fn init_simulation() -> isds::Simulation {
     ));
 
     sim
+}
+
+fn init_keyboard_listener(sim: SharedSimulation) -> gloo::events::EventListener {
+    let window = gloo::utils::window();
+    gloo::events::EventListener::new(&window, "keydown", move |event| {
+        let e = event.clone().dyn_into::<web_sys::KeyboardEvent>().unwrap();
+        match e.key().as_str() {
+            " " => sim.borrow_mut().time.toggle_paused(),
+            "ArrowLeft" => sim.borrow_mut().time.slow_down_tenfold_clamped(),
+            "ArrowRight" => sim.borrow_mut().time.speed_up_tenfold_clamped(),
+            "m" => sim.borrow_mut().do_now(isds::ForRandomNode(isds::PokeNode)),
+            _ => log!("Unmapped key pressed: {:?}", e),
+        }
+    })
+}
+
+fn view_layer(simulation_part: Html, explanation_part: Html) -> Html {
+    html! {
+        <div class="columns is-reversed-desktop">
+            <div class="column is-two-thirds-desktop">
+                <div class="box">
+                    { simulation_part }
+                </div>
+            </div>
+            <div class="column">
+                { explanation_part }
+            </div>
+        </div>
+    }
 }
 
 fn main() {

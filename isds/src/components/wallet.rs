@@ -144,7 +144,7 @@ impl Wallet {
         }
     }
     fn view_transactions(&self) -> Html {
-        let max_columns = 5;
+        let max_columns = 4;
         let relevant_transactions = self.cache.iter_all_transactions_newest_first();
         let (visible_transactions, value_before) =
             if relevant_transactions.clone().count() > max_columns {

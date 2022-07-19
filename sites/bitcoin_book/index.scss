@@ -1,3 +1,10 @@
 @import "../common/bulma/bulma";
 @import "../common/fontawesome/scss/fontawesome";
 @import "../common/fontawesome/scss/solid";
+
+// For putting descriptions above the layer simulation on small screens
+@media(max-width: $desktop) {
+  .is-reversed-desktop {
+    flex-direction: column-reverse;
+  }
+}
