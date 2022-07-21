@@ -96,6 +96,14 @@ impl Component for BitcoinBook {
                     { view_layer(
                         html!{
                             <>
+                                <isds::BlockchainView />
+                            </>
+                        },
+                        include_markdown_content!("../assets/blockchain.md")
+                    )}
+                    { view_layer(
+                        html!{
+                            <>
                                 <isds::TimeUi
                                     show_fps=false
                                     slowdown_handler_index={ Some(self.slowdown_handler_index) }
@@ -103,7 +111,7 @@ impl Component for BitcoinBook {
                                 <isds::NetView />
                             </>
                         },
-                        include_markdown_content!("../assets/netview.md")
+                        include_markdown_content!("../assets/network.md")
                     )}
                 </main>
             </isds::Isds>

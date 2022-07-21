@@ -16,6 +16,9 @@ macro_rules! get_isds_context {
     }};
 }
 
+mod blockchain_view;
+pub use blockchain_view::BlockchainView;
+
 mod fps_counter;
 pub use fps_counter::FpsCounter;
 
