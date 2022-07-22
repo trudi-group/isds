@@ -16,6 +16,8 @@ macro_rules! get_isds_context {
     }};
 }
 
+mod common;
+
 mod blockchain_view;
 pub use blockchain_view::BlockchainView;
 

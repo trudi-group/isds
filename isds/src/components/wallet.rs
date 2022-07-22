@@ -606,19 +606,22 @@ impl TransactionsCache {
     }
 }
 
-fn get_block_unchecked(tx_id: Entity, sim: &Simulation) -> (BlockHeader, hecs::Ref<BlockContents>) {
+fn get_block_unchecked(
+    block_id: Entity,
+    sim: &Simulation,
+) -> (BlockHeader, hecs::Ref<BlockContents>) {
     (
-        get_block_header_unchecked(tx_id, sim),
-        get_block_contents_unchecked(tx_id, sim),
+        get_block_header_unchecked(block_id, sim),
+        get_block_contents_unchecked(block_id, sim),
     )
 }
 
-fn get_block_header_unchecked(tx_id: Entity, sim: &Simulation) -> BlockHeader {
-    *sim.world.get::<BlockHeader>(tx_id).unwrap()
+fn get_block_header_unchecked(block_id: Entity, sim: &Simulation) -> BlockHeader {
+    *sim.world.get::<BlockHeader>(block_id).unwrap()
 }
 
-fn get_block_contents_unchecked(tx_id: Entity, sim: &Simulation) -> hecs::Ref<BlockContents> {
-    sim.world.get::<BlockContents>(tx_id).unwrap()
+fn get_block_contents_unchecked(block_id: Entity, sim: &Simulation) -> hecs::Ref<BlockContents> {
+    sim.world.get::<BlockContents>(block_id).unwrap()
 }
 
 fn get_transaction_unchecked(tx_id: Entity, sim: &Simulation) -> hecs::Ref<Transaction> {

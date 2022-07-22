@@ -11,6 +11,7 @@ use user::User;
 struct BitcoinBook {
     sim: SharedSimulation,
     users: Vec<User>,
+    blockchain_viewing_node: Option<isds::Entity>,
     slowdown_handler_index: usize,
     _key_listener: gloo::events::EventListener,
 }
@@ -35,11 +36,14 @@ impl Component for BitcoinBook {
             User::new("Charlie", None, false),
         ];
 
+        let blockchain_viewing_node = users[0].wallet_node;
+
         let sim = sim.into_shared();
         let _key_listener = init_keyboard_listener(sim.clone());
         Self {
             sim,
             users,
+            blockchain_viewing_node,
             slowdown_handler_index,
             _key_listener,
         }
@@ -96,7 +100,7 @@ impl Component for BitcoinBook {
                     { view_layer(
                         html!{
                             <>
-                                <isds::BlockchainView />
+                                <isds::BlockchainView viewing_node={ self.blockchain_viewing_node } />
                             </>
                         },
                         include_markdown_content!("../assets/blockchain.md")
