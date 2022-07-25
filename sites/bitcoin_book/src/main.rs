@@ -2,6 +2,8 @@ use isds::{log, SharedSimulation};
 use wasm_bindgen::JsCast;
 use yew::prelude::*;
 
+use rand::{seq::SliceRandom, thread_rng, Rng};
+
 #[macro_use]
 mod utils;
 
@@ -134,7 +136,7 @@ fn init_simulation() -> isds::Simulation {
     sim.do_now(isds::MakeDelaunayNetwork);
     sim.work_until(isds::SimSeconds::from(0.001)); // to make sure that some nodes are there
 
-    // make fake "genesis payments" so that wallet balances are not 0
+    // make some transactions so that wallet balances are not 0
     let power_node = sim.pick_random_node().unwrap();
     sim.do_now(isds::ForSpecific(
         power_node,
@@ -152,11 +154,36 @@ fn init_simulation() -> isds::Simulation {
             isds::blockchain_types::toshis_from(15.) as u64,
         ),
     ));
-    // bury them beneath a couple of blocks
-    sim.do_now(isds::MultipleTimes::new(
-        isds::ForSpecific(power_node, isds::nakamoto_consensus::MineBlock),
-        3,
+    // mine a block
+    sim.do_now(isds::ForSpecific(
+        power_node,
+        isds::nakamoto_consensus::MineBlock,
     ));
+
+    // make two blocks with some arbitrary transactions (so they don't look so empty)
+    let mut rng = thread_rng();
+    let addresses = "CDEFGHIJKLMNOPQRSTUVWXYZ"
+        .chars()
+        .map(|c| c.to_string())
+        .collect::<Vec<String>>();
+    for _ in 0..2 {
+        for _ in 0..rng.gen_range(1..5) {
+            sim.do_now(isds::ForSpecific(
+                power_node,
+                isds::nakamoto_consensus::BuildAndBroadcastTransaction::from(
+                    addresses.choose(&mut rng).unwrap(),
+                    addresses.choose(&mut rng).unwrap(),
+                    isds::blockchain_types::toshis_from(rng.gen_range(1..100) as f64) as u64,
+                ),
+            ));
+        }
+
+        // mine a block
+        sim.do_now(isds::ForSpecific(
+            power_node,
+            isds::nakamoto_consensus::MineBlock,
+        ));
+    }
     sim.work_until(isds::SimSeconds::from(1.));
 
     // magically mine a block at random intervals centered around 10 minutes
