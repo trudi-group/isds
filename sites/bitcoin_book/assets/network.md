@@ -9,7 +9,7 @@ Having a *link* between two peers simply means that the peers know each others' 
 
 The arguably most important service that the peer-to-peer network provides in a Bitcoin-like system is
 *broadcast* - getting all peers in the network to receive a certain message.
-We need this so that everyone becomes aware of new blocks for our blockchain, for example.
+We need this so that everyone becomes aware of new blocks on the blockchain, for example.
 
 Unlike your favorite radio station,
 computers on the Internet cannot simply broadcast their information to everyone that is interested -
