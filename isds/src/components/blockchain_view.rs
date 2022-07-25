@@ -78,9 +78,9 @@ impl Component for BlockchainView {
 
         html! {
             <>
-                { "View on main chain of node" }
+                { "The longest chain, as seen by node" }
                 <span class="ml-2 is-family-code">
-                    { viewing_node.map_or("None".to_string(), |id| self.sim.borrow().name(id)) }
+                    { viewing_node.map_or("None".to_string(), |id| sim.name(id)) }
                 </span>
                 <svg
                    viewBox={ format!("{} {} {} {}",
@@ -244,7 +244,7 @@ impl BlockchainView {
                     self.view_block_text(
                         block_x,
                         vec!["Genesis".to_string(),
-                        "block and this is a very ver very very very long string".to_string()],
+                        "block".to_string()],
                         "gray".to_string(),
                         ctx
                     )
@@ -315,6 +315,7 @@ impl BlockchainView {
                 y={ text_y.to_string() }
                 font-size = { font_size.to_string() }
                 font-family="monospace"
+                class="is-unselectable"
                 fill={ color }>
                 {
                     lines.into_iter().enumerate().map(|(i, line)| html! {
