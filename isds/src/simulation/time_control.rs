@@ -60,8 +60,12 @@ impl EventHandler for SlowDownOnMessages {
                         }
                     }
                     NodeEvent::MessageArrived(message) => {
-                        if (self.is_relevant_message)(message, &sim.world) {
-                            self.messages_in_flight = self.messages_in_flight.saturating_sub(1);
+                        if (self.is_relevant_message)(message, &sim.world)
+                            && self.messages_in_flight > 0
+                        // they might have been in flight before
+                        // we were created
+                        {
+                            self.messages_in_flight -= 1;
                             if self.messages_in_flight == 0 {
                                 sim.time.set_speed(self.regular_speed);
                             }
@@ -138,5 +142,25 @@ mod tests {
 
         sim.catch_up(100.);
         assert_eq!(0., sim.time.speed());
+    }
+
+    #[wasm_bindgen_test]
+    fn slow_down_handler_can_safely_be_initialized_while_messages_are_in_flight() {
+        let mut sim = Simulation::new();
+        let expected = sim.time.speed();
+
+        let node1 = sim.spawn_random_node();
+        let node2 = sim.spawn_random_node();
+
+        sim.work_until(SimSeconds::from(1.));
+        sim.send_message(node1, node2, ());
+        sim.work_until(SimSeconds::from(1.)); // message is in flight
+
+        sim.add_event_handler(SlowDownOnMessages::new(0.01, |_, _| true, true));
+
+        sim.work_until(SimSeconds::from(2.)); // message has arrived
+
+        let actual = sim.time.speed();
+        assert_eq!(expected, actual);
     }
 }
