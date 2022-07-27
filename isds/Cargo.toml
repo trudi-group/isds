@@ -25,3 +25,4 @@ gloo = "0.5"
 getrandom = { version = "0.2", features = ["js"] }
 readonly = "0.2.0"
 web-sys = { version = "0.3.55", features = ["HtmlSelectElement"] }
+sha2 = "0.10.2"

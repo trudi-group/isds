@@ -12,6 +12,8 @@ mod user;
 enum Route {
     #[at("/")]
     Layers,
+    #[at("/blockchain")]
+    Blockchain,
     #[at("/todo")]
     ToDo,
     #[not_found]
@@ -23,6 +25,7 @@ impl Route {
     fn resolve(&self) -> Html {
         match self {
             Route::Layers => html! { <pages::Layers /> },
+            Route::Blockchain => html! { <pages::Blockchain /> },
             Route::ToDo => html! {
                 <StandardPage title="TODO">
                     { include_markdown_content!("pages/todo.md") }
@@ -38,6 +41,7 @@ impl Route {
     fn nav_name(&self) -> &str {
         match self {
             Route::Layers => "Layers",
+            Route::Blockchain => "Blockchain",
             Route::ToDo => "TODO",
             Route::NotFound => "404",
         }

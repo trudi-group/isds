@@ -24,6 +24,9 @@ pub use blockchain_view::BlockchainView;
 mod fps_counter;
 pub use fps_counter::FpsCounter;
 
+mod hash_box;
+pub use hash_box::HashBox;
+
 mod net_view;
 pub use net_view::NetView;
 
