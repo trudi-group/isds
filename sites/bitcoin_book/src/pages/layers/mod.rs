@@ -22,7 +22,7 @@ impl Component for Layers {
 
         // add handler to make time run slower when messages are in-flight
         let slowdown_handler_index =
-            sim.add_event_handler(isds::SlowDownOnMessages::new(0.01, |_, _| true, true));
+            sim.add_event_handler(isds::SlowDownOnMessages::new(0.01, |_, _| true, false));
 
         // switch to real time
         sim.time.set_speed(1.);
@@ -47,7 +47,6 @@ impl Component for Layers {
     }
 
     fn view(&self, _: &Context<Self>) -> Html {
-        let wallet_send_amounts = vec![0.5, 1., 5., 10.];
         html! {
             <isds::Isds sim={ self.sim.clone() }>
                 <header class="section">
@@ -56,66 +55,102 @@ impl Component for Layers {
                     { include_markdown_content!("intro.md") }
                 </header>
                 <main class="section">
-                    { view_layer(
-                        html!{
-                            <div class="columns">
-                                {
-                                    self.users
-                                        .iter()
-                                        .filter(|user| user.show_wallet)
-                                        .map(|user| html!{
-                                            <div class="column">
-                                                <isds::Wallet
-                                                    full_node={ user.wallet_node }
-                                                    address={ user.name.clone() }
-                                                    send_whitelist={
-                                                        Some(isds::SendWhitelist::new(
-                                                                self.users
-                                                                    .iter()
-                                                                    .filter(|u| *u != user)
-                                                                    .map(|u| &u.name)
-                                                                    .cloned()
-                                                                    .collect(),
-                                                                wallet_send_amounts.clone()
-                                                            )
-                                                        )
-                                                    }
-                                                    class="box"
-                                                />
-                                            </div>
-                                        }).collect::<Html>()
-                                }
-                            </div>
-                        },
-                        include_markdown_content!("wallets.md")
-                    )}
-                    { view_layer(
-                        html!{
-                            <>
-                                <isds::BlockchainView
-                                    viewing_node={ self.blockchain_viewing_node }
-                                />
-                            </>
-                        },
-                        include_markdown_content!("blockchain.md")
-                    )}
-                    { view_layer(
-                        html!{
-                            <>
-                                <isds::TimeUi
-                                    show_fps=false
-                                    slowdown_handler_index={
-                                        Some(self.slowdown_handler_index)
-                                    }
-                                />
-                                <isds::NetView />
-                            </>
-                        },
-                        include_markdown_content!("network.md")
-                    )}
+                    { self.view_application_layer() }
+                    { self.view_blockchain_layer() }
+                    { self.view_consensus_layer() }
+                    { self.view_network_layer() }
                 </main>
             </isds::Isds>
         }
+    }
+}
+
+impl Layers {
+    fn view_application_layer(&self) -> Html {
+        let wallet_send_amounts = vec![0.5, 1., 5., 10.];
+        view_layer(
+            html! {
+                <div class="columns">
+                    {
+                        self.users
+                            .iter()
+                            .filter(|user| user.show_wallet)
+                            .map(|user| html!{
+                                <div class="column">
+                                    <isds::Wallet
+                                        full_node={ user.wallet_node }
+                                        address={ user.name.clone() }
+                                        send_whitelist={
+                                            Some(isds::SendWhitelist::new(
+                                                    self.users
+                                                        .iter()
+                                                        .filter(|u| *u != user)
+                                                        .map(|u| &u.name)
+                                                        .cloned()
+                                                        .collect(),
+                                                    wallet_send_amounts.clone()
+                                                )
+                                            )
+                                        }
+                                        class="box"
+                                    />
+                                </div>
+                            }).collect::<Html>()
+                    }
+                </div>
+            },
+            include_markdown_content!("application.md"),
+        )
+    }
+
+    fn view_blockchain_layer(&self) -> Html {
+        view_layer(
+            html! {
+                <isds::BlockchainView
+                    viewing_node={ self.blockchain_viewing_node }
+                />
+            },
+            include_markdown_content!("blockchain.md"),
+        )
+    }
+
+    fn view_consensus_layer(&self) -> Html {
+        let on_button = {
+            let sim = self.sim.clone();
+            Callback::from(move |_| sim.borrow_mut().do_now(isds::ForRandomNode(isds::PokeNode)))
+        };
+        view_layer(
+            html! {
+                <div class="section has-text-centered">
+                    <button
+                        class="button is-large"
+                        onclick={ on_button }
+                        title="Help a random node mine a block"
+                    >
+                        <span class="icon"><i class="fas fa-magic"></i></span>
+                        <span class="icon"><i class="fas fa-dice"></i></span>
+                    </button>
+                </div>
+            },
+            include_markdown_content!("consensus.md"),
+        )
+    }
+
+    fn view_network_layer(&self) -> Html {
+        view_layer(
+            html! {
+                <>
+                    <isds::TimeUi
+                        show_fps=false
+                        slowdown_handler_index={
+                            Some(self.slowdown_handler_index)
+                        }
+                    />
+                    <isds::NetView />
+                </>
+            },
+            include_markdown_content!("network.md"),
+        )
     }
 }
 

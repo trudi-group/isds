@@ -1,4 +1,4 @@
-## The network
+## Network
 
 At the end of the day, a Bitcoin-like system is a bunch of computers talking to each other.
 These computers form what is called a *peer-to-peer network* -
@@ -18,6 +18,8 @@ only point-to-point communication is well supported.
 We need to come up with a workaround, and that workaround is called *flooding*:
 We tell each of our peers about some information, and they then do the same.
 Eventually, the information spreads to all nodes.
+
 Try it!
 Click on one of the nodes in the network,
 which will cause it to magically "mine" a block and send it to its neighbors.
+You might want to activate "Slow down on messages" frist (upper right corner) so that you actually get to see the messages.
