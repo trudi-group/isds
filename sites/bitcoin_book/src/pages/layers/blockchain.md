@@ -1,5 +1,3 @@
-## Blockchain
-
 When you initiate transactions, they are not effective immediately.
 A transaction becomes effective by being written on the *blockchain*,
 or more specifically: by being included in a *block*.

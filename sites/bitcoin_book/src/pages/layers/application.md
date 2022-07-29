@@ -1,5 +1,3 @@
-## Application
-
 Applications, typically in the form of *wallets*,
 form the top layer of our hierarchy and are usually the only thing that regular users get to see.
 The interface of your real-life wallet will likely differ from what we are showing you here!

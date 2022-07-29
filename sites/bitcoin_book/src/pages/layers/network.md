@@ -1,5 +1,3 @@
-## Network
-
 At the end of the day, a Bitcoin-like system is a bunch of computers talking to each other.
 These computers form what is called a *peer-to-peer network* -
 a network formed when equally important nodes (peers) start forming links between each other.

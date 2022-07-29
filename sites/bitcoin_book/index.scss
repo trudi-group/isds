@@ -5,6 +5,7 @@
 // For putting descriptions above the layer simulation on small screens
 @media(max-width: $desktop) {
   .is-reversed-desktop {
+    display: flex;
     flex-direction: column-reverse;
   }
 }

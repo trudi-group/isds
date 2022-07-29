@@ -3,6 +3,9 @@ use user::User;
 
 use isds::{log, SharedSimulation};
 
+mod layer_description;
+use layer_description::LayerDescription;
+
 use rand::{seq::SliceRandom, thread_rng, Rng};
 
 pub struct Layers {
@@ -99,7 +102,11 @@ impl Layers {
                     }
                 </div>
             },
-            include_markdown_content!("application.md"),
+            html! {
+                <LayerDescription title="Application">
+                    { include_markdown_content!("application.md") }
+                </LayerDescription>
+            },
         )
     }
 
@@ -110,7 +117,11 @@ impl Layers {
                     viewing_node={ self.blockchain_viewing_node }
                 />
             },
-            include_markdown_content!("blockchain.md"),
+            html! {
+                <LayerDescription title="Blockchain">
+                    { include_markdown_content!("blockchain.md") }
+                </LayerDescription>
+            },
         )
     }
 
@@ -132,7 +143,11 @@ impl Layers {
                     </button>
                 </div>
             },
-            include_markdown_content!("consensus.md"),
+            html! {
+                <LayerDescription title="Consensus">
+                    { include_markdown_content!("consensus.md") }
+                </LayerDescription>
+            },
         )
     }
 
@@ -149,7 +164,11 @@ impl Layers {
                     <isds::NetView />
                 </>
             },
-            include_markdown_content!("network.md"),
+            html! {
+                <LayerDescription title="Network">
+                    { include_markdown_content!("network.md") }
+                </LayerDescription>
+            },
         )
     }
 }
