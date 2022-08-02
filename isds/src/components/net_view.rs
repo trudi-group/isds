@@ -18,9 +18,15 @@ pub enum Msg {
     LinkClick(Entity, Entity),
 }
 
+#[derive(Properties, PartialEq)]
+pub struct Props {
+    #[prop_or_default()]
+    pub on_node_click: Callback<Entity>,
+}
+
 impl Component for NetView {
     type Message = Msg;
-    type Properties = ();
+    type Properties = Props;
 
     fn create(ctx: &Context<Self>) -> Self {
         let (context_data, _context_handle) = get_isds_context!(ctx, Self);
@@ -66,16 +72,15 @@ impl Component for NetView {
         }
     }
 
-    fn update(&mut self, _: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::Rendered(_) => {
                 self.rebuild_edges_if_changed();
                 true // often enough, we'll have in-flight messages that have to be redrawn
             }
             Msg::NodeClick(node) => {
-                // TODO perhaps configure node click action using a property?
                 log!(format!("Click on {}", self.sim.borrow().name(node)));
-                self.sim.borrow_mut().do_now(PokeSpecificNode(node));
+                ctx.props().on_node_click.emit(node);
                 false
             }
             Msg::LinkClick(node1, node2) => {

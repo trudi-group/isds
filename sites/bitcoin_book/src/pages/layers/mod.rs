@@ -152,6 +152,10 @@ impl Layers {
     }
 
     fn view_network_layer(&self) -> Html {
+        let on_node_click = {
+            let sim = self.sim.clone();
+            Callback::from(move |node| random_transaction(&mut sim.borrow_mut(), node))
+        };
         view_layer(
             html! {
                 <>
@@ -161,7 +165,7 @@ impl Layers {
                             Some(self.slowdown_handler_index)
                         }
                     />
-                    <isds::NetView />
+                    <isds::NetView { on_node_click } />
                 </>
             },
             html! {
@@ -209,21 +213,9 @@ fn init_simulation() -> isds::Simulation {
     ));
 
     // make two blocks with some arbitrary transactions (so they don't look so empty)
-    let mut rng = thread_rng();
-    let addresses = "CDEFGHIJKLMNOPQRSTUVWXYZ"
-        .chars()
-        .map(|c| c.to_string())
-        .collect::<Vec<String>>();
     for _ in 0..2 {
-        for _ in 0..rng.gen_range(1..5) {
-            sim.do_now(isds::ForSpecific(
-                power_node,
-                isds::nakamoto_consensus::BuildAndBroadcastTransaction::from(
-                    addresses.choose(&mut rng).unwrap(),
-                    addresses.choose(&mut rng).unwrap(),
-                    isds::blockchain_types::toshis_from(rng.gen_range(1..100) as f64) as u64,
-                ),
-            ));
+        for _ in 0..thread_rng().gen_range(1..5) {
+            random_transaction(&mut sim, power_node);
         }
 
         // mine a block
@@ -241,6 +233,22 @@ fn init_simulation() -> isds::Simulation {
     ));
 
     sim
+}
+
+fn random_transaction(sim: &mut isds::Simulation, origin_node: isds::Entity) {
+    let mut rng = thread_rng();
+    let addresses = "CDEFGHIJKLMNOPQRSTUVWXYZ"
+        .chars()
+        .map(|c| c.to_string())
+        .collect::<Vec<String>>();
+    sim.do_now(isds::ForSpecific(
+        origin_node,
+        isds::nakamoto_consensus::BuildAndBroadcastTransaction::from(
+            addresses.choose(&mut rng).unwrap(),
+            addresses.choose(&mut rng).unwrap(),
+            isds::blockchain_types::toshis_from(rng.gen_range(1..100) as f64) as u64,
+        ),
+    ));
 }
 
 fn init_keyboard_listener(sim: SharedSimulation) -> gloo::events::EventListener {
