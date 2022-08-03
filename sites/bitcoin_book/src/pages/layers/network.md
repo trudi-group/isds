@@ -3,7 +3,7 @@ These computers form what is called a *peer-to-peer network* -
 a network formed when equally important nodes (peers) start forming links between each other.
 Having a *link* between two peers simply means that the peers know each others' addresses and can send messages to each other over the Internet.
 
-### Flooding <i class="fas fa-bullhorn"></i>
+#### Flooding <i class="fas fa-bullhorn"></i>
 
 The arguably most important service that the peer-to-peer network provides in a Bitcoin-like system is
 *broadcast* - getting all peers in the network to receive a certain message.
@@ -19,5 +19,5 @@ Eventually, the information spreads to all nodes.
 
 Try it!
 Click on one of the nodes in the network,
-which will cause it to magically "mine" a block and send it to its neighbors.
-You might want to activate "Slow down on messages" frist (upper right corner) so that you actually get to see the messages.
+which will cause it to create a random transaction and flood it.
+You might want to activate "Slow down on messages" first (upper right corner) so that you actually get to see the messages.

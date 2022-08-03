@@ -9,3 +9,17 @@
     flex-direction: column-reverse;
   }
 }
+
+@media(min-width: $desktop) {
+  .is-vertical-desktop {
+    writing-mode: vertical-rl;
+  }
+}
+
+.is-wide-enough {
+  min-width: 20em;
+}
+
+.is-tight {
+  width: fit-content;
+}

@@ -16,8 +16,18 @@ pub fn layer_description(props: &Props) -> Html {
     };
     html! {
         <>
-            <div class="level is-mobile is-clickable is-unselectable" onclick={ on_title_click }>
-                <div class="level-left">
+            <div class={
+                    classes!(
+                        "level",
+                        "is-mobile",
+                        "is-clickable",
+                        "is-unselectable",
+                        is_collapsed.then_some("is-vertical-desktop"),
+                    )
+                }
+                onclick={ on_title_click }
+            >
+                <div class={ classes!("level-left", is_collapsed.then_some("pb-2")) }>
                     <h2 class="title is-4">{ &props.title }</h2>
                 </div>
                 <div class="level-right">

@@ -14,6 +14,8 @@ enum Route {
     Layers,
     #[at("/blockchain")]
     Blockchain,
+    #[at("/blockchain/hashes")]
+    Hashes,
     #[at("/beyond")]
     Beyond,
     #[at("/todo")]
@@ -28,6 +30,7 @@ impl Route {
         match self {
             Route::Layers => html! { <pages::Layers /> },
             Route::Blockchain => html! { <pages::Blockchain /> },
+            Route::Hashes => html! { <pages::blockchain::Hashes /> },
             Route::Beyond => html! { <pages::Beyond /> },
             Route::ToDo => html! {
                 <StandardPage title="TODO">
@@ -45,9 +48,17 @@ impl Route {
         match self {
             Route::Layers => "Layers",
             Route::Blockchain => "Blockchain",
+            Route::Hashes => "Hashes",
             Route::Beyond => "Beyond",
             Route::ToDo => "TODO",
             Route::NotFound => "404",
+        }
+    }
+    fn parent(&self) -> Option<Self> {
+        match self {
+            Route::Hashes => Some(Route::Blockchain),
+            Route::Layers => None,
+            _ => Some(Route::Layers),
         }
     }
 }
@@ -80,10 +91,17 @@ fn nav_bar() -> Html {
     html! {
             <nav class="breadcrumb">
                 <ul>
-                    if route != Route::Layers {
+                    if let Some(grandparent) = route.parent().and_then(|route| route.parent()) {
                         <li>
-                            <Link<Route> to={Route::Layers}>
-                                { Route::Layers.nav_name() }
+                            <Link<Route> to={ grandparent }>
+                                { grandparent.nav_name() }
+                            </Link<Route>>
+                        </li>
+                    }
+                    if let Some(parent) = route.parent() {
+                        <li>
+                            <Link<Route> to={ parent }>
+                                { parent.nav_name() }
                             </Link<Route>>
                         </li>
                     }

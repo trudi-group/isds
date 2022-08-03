@@ -6,5 +6,5 @@ pub use beyond::Beyond;
 mod layers;
 pub use layers::Layers;
 
-mod blockchain;
+pub mod blockchain;
 pub use blockchain::Blockchain;

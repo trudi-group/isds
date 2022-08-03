@@ -267,13 +267,13 @@ fn init_keyboard_listener(sim: SharedSimulation) -> gloo::events::EventListener 
 
 fn view_layer(simulation_part: Html, explanation_part: Html) -> Html {
     html! {
-        <div class="columns is-reversed-desktop">
+        <div class="columns is-reversed-desktop is-centered">
             <div class="column is-two-thirds-desktop">
                 <div class="box">
                     { simulation_part }
                 </div>
             </div>
-            <div class="column">
+            <div class="column is-2-desktop is-wide-enough">
                 { explanation_part }
             </div>
         </div>

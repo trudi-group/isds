@@ -35,11 +35,11 @@ impl Component for HashBox {
             <div class="box">
                 <div class="field">
                     <label class="label">{"Type anything:"}</label>
-                    <input ref={self.input_ref.clone()} class="input" {oninput} />
+                    <input ref={self.input_ref.clone()} class="input is-size-7" {oninput} />
                 </div>
                 <div class="field">
-                    <label class="label">{"The SHA256 hash of what you just typed as a hex string:"}</label>
-                    <input class="input" readonly=true value={format!("{:x}", hash_value)} />
+                    <label class="label">{"The SHA256 hash of what you just typed, as a hex string:"}</label>
+                    <input class="input is-size-7" readonly=true value={format!("{:x}", hash_value)} />
                 </div>
                 <div class="field">
                     <label class="label">{"Expressed as bits (32 bits per line):"}</label>

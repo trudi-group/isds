@@ -1,25 +1,20 @@
 use super::*;
 
+mod hashes;
+pub use hashes::Hashes;
+
 #[function_component(Blockchain)]
 pub fn blockchain() -> Html {
     html! {
         <StandardPage title="The (actual) blockchain">
-            <h3>
-                { "What makes the blockchain so immutable?" }
-            </h3>
             <p>
-                { "Hash functions." }
+                { "This page might have more to tell you about blockchain-the-data-structure in the future." }
             </p>
             <p>
-                { "And this is how hash functions work:" }
-            </p>
-            <isds::HashBox />
-            <p>
-                { "This page is " }
-                <Link<Route> to={Route::ToDo}>
-                    { "work in progress " }
+                { "Right now, we only thematize: " }
+                <Link<Route> to={Route::Hashes}>
+                    { "What makes the blockchain so immutable?" }
                 </Link<Route>>
-                { "by the way..." }
             </p>
         </StandardPage>
     }
