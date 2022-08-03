@@ -14,6 +14,8 @@ enum Route {
     Layers,
     #[at("/blockchain")]
     Blockchain,
+    #[at("/beyond")]
+    Beyond,
     #[at("/todo")]
     ToDo,
     #[not_found]
@@ -26,6 +28,7 @@ impl Route {
         match self {
             Route::Layers => html! { <pages::Layers /> },
             Route::Blockchain => html! { <pages::Blockchain /> },
+            Route::Beyond => html! { <pages::Beyond /> },
             Route::ToDo => html! {
                 <StandardPage title="TODO">
                     { include_markdown_content!("pages/todo.md") }
@@ -42,6 +45,7 @@ impl Route {
         match self {
             Route::Layers => "Layers",
             Route::Blockchain => "Blockchain",
+            Route::Beyond => "Beyond",
             Route::ToDo => "TODO",
             Route::NotFound => "404",
         }
