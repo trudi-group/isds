@@ -11,7 +11,7 @@ pub struct TimeUiProps {
 #[function_component(TimeUi)]
 pub fn time_ui(props: &TimeUiProps) -> Html {
     html! {
-        <div class="level is-mobile">
+        <div class="level is-mobile mb-0">
             <div class="level-left">
                 <div class="level-item">
                     <div class="buttons are-small">

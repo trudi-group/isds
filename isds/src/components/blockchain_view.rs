@@ -70,6 +70,7 @@ impl Component for BlockchainView {
             inter_block_space,
             block_size,
             max_visible_blocks,
+            stroke_width,
             ..
         } = ctx.props();
 
@@ -85,9 +86,9 @@ impl Component for BlockchainView {
                 <svg
                    viewBox={ format!("{} {} {} {}",
                        -inter_block_space,
-                       -inter_block_space,
+                       -0.5 * inter_block_space,
                        ((max_visible_blocks + 1) as f32) * (block_size + inter_block_space) + inter_block_space,
-                       block_size + 2. * inter_block_space,
+                       block_size + 0.5 * inter_block_space + stroke_width,
                     ) }
                 >
                     {

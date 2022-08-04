@@ -132,7 +132,7 @@ impl Layers {
         };
         view_layer(
             html! {
-                <div class="section has-text-centered">
+                <div class="has-text-centered p-5">
                     <button
                         class="button is-large"
                         onclick={ on_button }
@@ -267,7 +267,7 @@ fn init_keyboard_listener(sim: SharedSimulation) -> gloo::events::EventListener 
 
 fn view_layer(simulation_part: Html, explanation_part: Html) -> Html {
     html! {
-        <div class="columns is-reversed-desktop is-centered">
+        <div class="columns is-reversed-desktop is-centered pb-2">
             <div class="column is-two-thirds-desktop">
                 <div class="box">
                     { simulation_part }
