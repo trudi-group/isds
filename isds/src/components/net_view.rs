@@ -22,6 +22,10 @@ pub enum Msg {
 pub struct Props {
     #[prop_or_default()]
     pub on_node_click: Callback<Entity>,
+
+    #[prop_or(50.)]
+    pub buffer_space: f32,
+    // TODO a lot more things should be props really
 }
 
 impl Component for NetView {
@@ -49,7 +53,7 @@ impl Component for NetView {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let buffer_space = 50.; // chosen based on node radius and blockchain box size
+        let buffer_space = ctx.props().buffer_space;
         html! {
             <>
                 <style>

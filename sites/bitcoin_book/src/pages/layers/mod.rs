@@ -165,7 +165,7 @@ impl Layers {
                             Some(self.slowdown_handler_index)
                         }
                     />
-                    <isds::NetView { on_node_click } />
+                    <isds::NetView { on_node_click } buffer_space=25. />
                 </>
             },
             html! {
@@ -184,7 +184,8 @@ fn init_simulation() -> isds::Simulation {
     ));
 
     // init network
-    sim.do_now(isds::SpawnRandomNodes(10));
+    sim.do_now(isds::SpawnRandomNodes(20));
+    sim.do_now(isds::DespawnMostCrowdedNodes(10));
     sim.do_now(isds::MakeDelaunayNetwork);
     sim.work_until(isds::SimSeconds::from(0.001)); // to make sure that some nodes are there
 

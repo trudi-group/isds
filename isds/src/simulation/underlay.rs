@@ -11,6 +11,17 @@ impl Command for SpawnRandomNodes {
     }
 }
 
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct DespawnMostCrowdedNodes(pub usize);
+impl Command for DespawnMostCrowdedNodes {
+    fn execute(&self, sim: &mut Simulation) -> Result<(), Box<dyn Error>> {
+        for _ in 0..self.0 {
+            sim.despawn_most_crowded_node()?;
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ForRandomNode<A: EntityAction>(pub A);
 impl<A: EntityAction> Command for ForRandomNode<A> {
@@ -103,6 +114,14 @@ impl Simulation {
         self.world
             .spawn(random_node(&self.underlay_config, &mut self.rng))
     }
+    pub fn despawn_most_crowded_node(&mut self) -> Result<(), String> {
+        if let Some(node) = self.most_crowded_node() {
+            self.world.despawn(node).unwrap();
+            Ok(())
+        } else {
+            Err("No nodes left to despawn".to_string())
+        }
+    }
     pub fn pick_random_node(&mut self) -> Option<Entity> {
         self.all_nodes().choose(&mut self.rng).copied()
     }
@@ -143,6 +162,32 @@ impl Simulation {
             start_time += per_message_delay;
         }
         message_entities
+    }
+    /// Warning: Current implementation ist not very efficient!
+    fn most_crowded_node(&mut self) -> Option<Entity> {
+        let all_nodes: Vec<(Entity, UnderlayPosition)> = self
+            .world
+            .query_mut::<(&UnderlayNodeName, &UnderlayPosition)>()
+            .into_iter()
+            .map(|(id, (_, &position))| (id, position))
+            .collect();
+
+        all_nodes
+            .iter()
+            .map(|&(node, position)| {
+                (
+                    node,
+                    all_nodes
+                        .iter()
+                        .filter_map(|&(other_node, other_position)| {
+                            (other_node != node)
+                                .then(|| 1. / UnderlayPosition::distance(position, other_position))
+                        })
+                        .sum::<f32>(),
+                )
+            })
+            .max_by_key(|(_, crowdedness_score)| OrderedFloat(*crowdedness_score))
+            .map(|(node, _)| node)
     }
     fn spawn_and_schedule_message<P: Payload>(
         &mut self,
@@ -247,6 +292,27 @@ mod tests {
             .get()
             .unwrap()
             .clone();
+        assert_eq!(expected, actual);
+    }
+
+    #[wasm_bindgen_test]
+    fn most_crowded_node_in_line_is_middle_node() {
+        let mut sim = Simulation::new();
+        let _node1 = sim.world.spawn((
+            UnderlayNodeName("node1".to_string()),
+            UnderlayPosition { x: 10., y: 10. },
+        ));
+        let node2 = sim.world.spawn((
+            UnderlayNodeName("node2".to_string()),
+            UnderlayPosition { x: 20., y: 10. },
+        ));
+        let _node3 = sim.world.spawn((
+            UnderlayNodeName("node3".to_string()),
+            UnderlayPosition { x: 30., y: 10. },
+        ));
+
+        let expected = Some(node2);
+        let actual = sim.most_crowded_node();
         assert_eq!(expected, actual);
     }
 }
