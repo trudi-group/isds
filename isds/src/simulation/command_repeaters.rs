@@ -1,5 +1,5 @@
 use super::*;
-use rand_distr::{Distribution, Normal};
+use rand_distr::{Distribution, Exp};
 use std::cmp;
 
 #[derive(Debug, Clone)]
@@ -59,17 +59,20 @@ impl Command for AtStaticIntervals {
     }
 }
 
+/// Intervals are chosen based on an exponential distribution (good model for Bitcoin block times).
 #[derive(Debug, Clone)]
 pub struct AtRandomIntervals {
     pub command: Box<dyn Command>,
-    pub interval_distribution: Normal<f64>,
+    pub interval_distribution: Exp<f64>,
     pub skip_one: bool,
 }
 impl AtRandomIntervals {
     pub fn new(command: impl Command + 'static, mean_interval: SimSeconds) -> Self {
         let command = Box::new(command);
-        let interval_distribution = Normal::new(mean_interval.0, 1.).unwrap();
-        let skip_one = true; // skip first
+        let lambda = 1. / mean_interval.0;
+        let interval_distribution = Exp::new(lambda).unwrap();
+        // don't execute `command` the first time we're scheduled - only reschedule us then
+        let skip_one = true;
         Self {
             command,
             interval_distribution,
