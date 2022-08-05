@@ -5,8 +5,13 @@ use yew_router::prelude::*;
 #[macro_use]
 mod utils;
 
+mod keyboard;
+use keyboard::init_keyboard_listener;
+
+mod user_model;
+use user_model::{random_transaction, random_transaction_from_random_node};
+
 mod pages;
-mod user;
 
 #[derive(Copy, Clone, Routable, PartialEq)]
 enum Route {

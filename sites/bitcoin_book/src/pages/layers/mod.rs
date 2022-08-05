@@ -1,15 +1,13 @@
 use super::*;
-use user::User;
-
-use isds::{log, SharedSimulation};
+use user_model::User;
 
 mod layer_description;
 use layer_description::LayerDescription;
 
-use rand::{seq::SliceRandom, thread_rng, Rng};
+use rand::{thread_rng, Rng};
 
 pub struct Layers {
-    sim: SharedSimulation,
+    sim: isds::SharedSimulation,
     users: Vec<User>,
     blockchain_viewing_node: Option<isds::Entity>,
     slowdown_handler_index: usize,
@@ -235,51 +233,6 @@ fn init_simulation() -> isds::Simulation {
     ));
 
     sim
-}
-
-fn random_transaction(sim: &mut isds::Simulation, origin_node: isds::Entity) {
-    let mut rng = thread_rng();
-    let addresses = "CDEFGHIJKLMNOPQRSTUVWXYZ"
-        .chars()
-        .map(|c| c.to_string())
-        .collect::<Vec<String>>();
-    sim.do_now(isds::ForSpecific(
-        origin_node,
-        isds::nakamoto_consensus::BuildAndBroadcastTransaction::from(
-            addresses.choose(&mut rng).unwrap(),
-            addresses.choose(&mut rng).unwrap(),
-            isds::blockchain_types::toshis_from(rng.gen_range(1..100) as f64) as u64,
-        ),
-    ));
-}
-
-fn init_keyboard_listener(
-    sim: SharedSimulation,
-    slowdown_handler_index: usize,
-) -> gloo::events::EventListener {
-    let window = gloo::utils::window();
-    gloo::events::EventListener::new(&window, "keydown", move |event| {
-        let e = event.clone().dyn_into::<web_sys::KeyboardEvent>().unwrap();
-        match e.key().as_str() {
-            " " => sim.borrow_mut().time.toggle_paused(),
-            "ArrowLeft" => sim.borrow_mut().time.slow_down_tenfold_clamped(),
-            "ArrowRight" => sim.borrow_mut().time.speed_up_tenfold_clamped(),
-            "m" => sim
-                .borrow_mut()
-                .do_now(isds::ForRandomNode(isds::nakamoto_consensus::MineBlock)),
-            "s" => {
-                let mut sim = sim.borrow_mut();
-                if let Some(slowdown_handler) =
-                    sim.additional_event_handlers()
-                        .borrow_mut()
-                        .get_mut::<isds::SlowDownOnMessages>(slowdown_handler_index)
-                {
-                    slowdown_handler.toggle_enabled(&mut sim);
-                }
-            }
-            _ => log!("Unmapped key pressed: {:?}", e),
-        }
-    })
 }
 
 fn view_layer(simulation_part: Html, explanation_part: Html) -> Html {

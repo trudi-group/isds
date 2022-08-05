@@ -1,9 +1,8 @@
-use isds::{log, SharedSimulation};
 use wasm_bindgen::JsCast;
 use yew::prelude::*;
 
 struct NakamotoStandalone {
-    sim: SharedSimulation,
+    sim: isds::SharedSimulation,
     _key_listener: gloo::events::EventListener,
 }
 
@@ -29,18 +28,36 @@ impl Component for NakamotoStandalone {
     }
 }
 
-fn init_keyboard_listener(sim: SharedSimulation) -> gloo::events::EventListener {
+fn init_keyboard_listener(sim: isds::SharedSimulation) -> gloo::events::EventListener {
     let window = gloo::utils::window();
-    gloo::events::EventListener::new(&window, "keydown", move |event| {
-        let e = event.clone().dyn_into::<web_sys::KeyboardEvent>().unwrap();
-        match e.key().as_str() {
-            " " => sim.borrow_mut().time.toggle_paused(),
-            "ArrowLeft" => sim.borrow_mut().time.slow_down_tenfold_clamped(),
-            "ArrowRight" => sim.borrow_mut().time.speed_up_tenfold_clamped(),
-            "m" => sim.borrow_mut().do_now(isds::ForRandomNode(isds::PokeNode)),
-            _ => log!("Unmapped key pressed: {:?}", e),
-        }
-    })
+    gloo::events::EventListener::new_with_options(
+        &window,
+        "keydown",
+        gloo::events::EventListenerOptions::enable_prevent_default(),
+        move |event| {
+            let e = event.clone().dyn_into::<web_sys::KeyboardEvent>().unwrap();
+            match e.key().as_str() {
+                " " => {
+                    sim.borrow_mut().time.toggle_paused();
+                    e.prevent_default()
+                }
+                "ArrowLeft" => {
+                    sim.borrow_mut().time.slow_down_tenfold_clamped();
+                    e.prevent_default()
+                }
+                "ArrowRight" => {
+                    sim.borrow_mut().time.speed_up_tenfold_clamped();
+                    e.prevent_default()
+                }
+                "m" => {
+                    sim.borrow_mut()
+                        .do_now(isds::ForRandomNode(isds::nakamoto_consensus::MineBlock));
+                    e.prevent_default()
+                }
+                _ => isds::log!("Unmapped key pressed: {:?}", e),
+            }
+        },
+    )
 }
 
 fn init_simulation() -> isds::Simulation {

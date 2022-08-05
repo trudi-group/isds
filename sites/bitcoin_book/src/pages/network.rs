@@ -1,5 +1,4 @@
 use super::*;
-use isds::{log, SharedSimulation};
 
 #[function_component(Network)]
 pub fn network() -> Html {
@@ -31,6 +30,7 @@ pub fn network() -> Html {
                         - `[space]` ⇨ pause/play simulation
                         - `[←]`/`[→]` ⇨ control simulation speed
                         - `[m]` ⇨ a random node will "mine" a block
+                        - `[t]` ⇨ a random node will send out a random transaction
                         - `[s]` ⇨ toggle slowdown on messages
                         "#
                     }
@@ -41,7 +41,7 @@ pub fn network() -> Html {
 }
 
 pub struct Standalone {
-    sim: SharedSimulation,
+    sim: isds::SharedSimulation,
     slowdown_handler_index: usize,
     _key_listener: gloo::events::EventListener,
 }
@@ -91,35 +91,6 @@ impl Component for Standalone {
             </isds::Isds>
         }
     }
-}
-
-fn init_keyboard_listener(
-    sim: SharedSimulation,
-    slowdown_handler_index: usize,
-) -> gloo::events::EventListener {
-    let window = gloo::utils::window();
-    gloo::events::EventListener::new(&window, "keydown", move |event| {
-        let e = event.clone().dyn_into::<web_sys::KeyboardEvent>().unwrap();
-        match e.key().as_str() {
-            " " => sim.borrow_mut().time.toggle_paused(),
-            "ArrowLeft" => sim.borrow_mut().time.slow_down_tenfold_clamped(),
-            "ArrowRight" => sim.borrow_mut().time.speed_up_tenfold_clamped(),
-            "m" => sim
-                .borrow_mut()
-                .do_now(isds::ForRandomNode(isds::nakamoto_consensus::MineBlock)),
-            "s" => {
-                let mut sim = sim.borrow_mut();
-                if let Some(slowdown_handler) =
-                    sim.additional_event_handlers()
-                        .borrow_mut()
-                        .get_mut::<isds::SlowDownOnMessages>(slowdown_handler_index)
-                {
-                    slowdown_handler.toggle_enabled(&mut sim);
-                }
-            }
-            _ => log!("Unmapped key pressed: {:?}", e),
-        }
-    })
 }
 
 fn init_simulation() -> isds::Simulation {
