@@ -1,4 +1,4 @@
-Consensus is the process by which the network decides which possible chain of blocks is going to be the "correct" blockchain.
+Consensus is the process by which the network decides which chain of blocks is going to be the "correct" blockchain.
 Consensus in Bitcoin is characterized by two central features:
 
 - Use of *Proof-of-Work* (an extremely intense game of dice) for determining who will get to propose (or *mine*) the next block.
