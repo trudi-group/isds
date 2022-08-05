@@ -39,7 +39,7 @@ impl Component for HashBox {
                 </div>
                 <div class="field">
                     <label class="label">{"The SHA256 hash of what you just typed, as a hex string:"}</label>
-                    <input class="input is-size-7" readonly=true value={format!("{:x}", hash_value)} />
+                    <input class="input is-size-7 is-family-code" readonly=true value={format!("{:x}", hash_value)} />
                 </div>
                 <div class="field">
                     <label class="label">{"Expressed as bits (32 bits per line):"}</label>

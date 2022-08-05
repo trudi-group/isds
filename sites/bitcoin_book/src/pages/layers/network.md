@@ -21,3 +21,5 @@ Try it!
 Click on one of the nodes in the network,
 which will cause it to create a random transaction and flood it.
 You might want to activate "Slow down on messages" first (upper right corner) so that you actually get to see the messages.
+
+A bigger network to play with is awaylable [here](network).

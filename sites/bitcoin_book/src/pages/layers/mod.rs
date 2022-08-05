@@ -39,7 +39,7 @@ impl Component for Layers {
         let blockchain_viewing_node = users[0].wallet_node;
 
         let sim = sim.into_shared();
-        let _key_listener = init_keyboard_listener(sim.clone());
+        let _key_listener = init_keyboard_listener(sim.clone(), slowdown_handler_index);
         Self {
             sim,
             users,
@@ -252,7 +252,10 @@ fn random_transaction(sim: &mut isds::Simulation, origin_node: isds::Entity) {
     ));
 }
 
-fn init_keyboard_listener(sim: SharedSimulation) -> gloo::events::EventListener {
+fn init_keyboard_listener(
+    sim: SharedSimulation,
+    slowdown_handler_index: usize,
+) -> gloo::events::EventListener {
     let window = gloo::utils::window();
     gloo::events::EventListener::new(&window, "keydown", move |event| {
         let e = event.clone().dyn_into::<web_sys::KeyboardEvent>().unwrap();
@@ -260,7 +263,19 @@ fn init_keyboard_listener(sim: SharedSimulation) -> gloo::events::EventListener 
             " " => sim.borrow_mut().time.toggle_paused(),
             "ArrowLeft" => sim.borrow_mut().time.slow_down_tenfold_clamped(),
             "ArrowRight" => sim.borrow_mut().time.speed_up_tenfold_clamped(),
-            "m" => sim.borrow_mut().do_now(isds::ForRandomNode(isds::PokeNode)),
+            "m" => sim
+                .borrow_mut()
+                .do_now(isds::ForRandomNode(isds::nakamoto_consensus::MineBlock)),
+            "s" => {
+                let mut sim = sim.borrow_mut();
+                if let Some(slowdown_handler) =
+                    sim.additional_event_handlers()
+                        .borrow_mut()
+                        .get_mut::<isds::SlowDownOnMessages>(slowdown_handler_index)
+                {
+                    slowdown_handler.toggle_enabled(&mut sim);
+                }
+            }
             _ => log!("Unmapped key pressed: {:?}", e),
         }
     })

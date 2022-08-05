@@ -15,7 +15,11 @@ enum Route {
     #[at("/blockchain")]
     Blockchain,
     #[at("/blockchain/hashes")]
-    Hashes,
+    BlockchainHashes,
+    #[at("/network")]
+    Network,
+    #[at("/network/standalone")]
+    NetworkStandalone,
     #[at("/beyond")]
     Beyond,
     #[at("/todo")]
@@ -30,7 +34,9 @@ impl Route {
         match self {
             Route::Layers => html! { <pages::Layers /> },
             Route::Blockchain => html! { <pages::Blockchain /> },
-            Route::Hashes => html! { <pages::blockchain::Hashes /> },
+            Route::BlockchainHashes => html! { <pages::blockchain::Hashes /> },
+            Route::Network => html! { <pages::Network /> },
+            Route::NetworkStandalone => html! { <pages::network::Standalone /> },
             Route::Beyond => html! { <pages::Beyond /> },
             Route::ToDo => html! {
                 <StandardPage title="TODO">
@@ -48,7 +54,9 @@ impl Route {
         match self {
             Route::Layers => "Layers",
             Route::Blockchain => "Blockchain",
-            Route::Hashes => "Hashes",
+            Route::BlockchainHashes => "Hashes",
+            Route::Network => "Network",
+            Route::NetworkStandalone => "Standalone",
             Route::Beyond => "Beyond",
             Route::ToDo => "TODO",
             Route::NotFound => "404",
@@ -56,7 +64,7 @@ impl Route {
     }
     fn parent(&self) -> Option<Self> {
         match self {
-            Route::Hashes => Some(Route::Blockchain),
+            Route::BlockchainHashes => Some(Route::Blockchain),
             Route::Layers => None,
             _ => Some(Route::Layers),
         }

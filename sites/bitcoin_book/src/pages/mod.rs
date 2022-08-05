@@ -8,3 +8,6 @@ pub use layers::Layers;
 
 pub mod blockchain;
 pub use blockchain::Blockchain;
+
+pub mod network;
+pub use network::Network;
