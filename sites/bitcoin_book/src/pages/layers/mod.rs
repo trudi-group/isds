@@ -63,6 +63,7 @@ impl Component for Layers {
                     { self.view_consensus_layer() }
                     { self.view_network_layer() }
                 </main>
+                <Footer />
             </isds::Isds>
         }
     }

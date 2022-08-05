@@ -121,6 +121,25 @@ fn nav_bar() -> Html {
     }
 }
 
+#[function_component(Footer)]
+fn footer() -> Html {
+    html! {
+        <footer class="footer">
+            <div class="container">
+                { "Built with " }
+                <i class="fas fa-heart"></i>
+                { " at the " }
+                <a href="https://www.weizenbaum-institut.de/en/research/rg17/">{ "Weizenbaum Institute" }</a>
+                { ". Source code " }
+                <a href="https://github.com/trudi-group/isds">{ "here" }</a>
+                { ". Feedback " }
+                <a href="mailto:martin.florian@hu-berlin.de">{ "welcome" }</a>
+                { "!" }
+            </div>
+        </footer>
+    }
+}
+
 #[function_component(BitcoinBook)]
 fn app() -> Html {
     html! {
