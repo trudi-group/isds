@@ -11,7 +11,7 @@ pub struct TimeUiProps {
 #[function_component(TimeUi)]
 pub fn time_ui(props: &TimeUiProps) -> Html {
     html! {
-        <div class="level is-mobile mb-0">
+        <div class="level is-mobile mb-0 is-size-6-tablet is-size-7-mobile">
             <div class="level-left">
                 <div class="level-item">
                     <div class="buttons are-small">
@@ -98,7 +98,15 @@ pub fn time_display() -> Html {
     let sim = context.sim.borrow();
 
     html! {
-        { format!("Sim time (s): {:.3} ({}✕)", sim.time.now(), sim.time.speed()) }
+        <>
+            <i class="fas fa-clock"></i>
+            <span class="ml-1 is-hidden-mobile">
+                { format!("(s): {:.3}", sim.time.now()) }
+            </span>
+            <span class="ml-1">
+                { format!("({}✕)", sim.time.speed()) }
+            </span>
+        </>
     }
 }
 
