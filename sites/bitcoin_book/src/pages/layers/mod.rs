@@ -179,7 +179,7 @@ impl Layers {
 }
 
 fn init_simulation() -> isds::Simulation {
-    let mut sim = isds::Simulation::new_with_underlay_dimensions(400., 200.);
+    let mut sim = isds::Simulation::new_with_underlay_dimensions(320., 160.);
     sim.add_event_handler(isds::InvokeProtocolForAllNodes(
         isds::nakamoto_consensus::NakamotoConsensus::default(),
     ));
