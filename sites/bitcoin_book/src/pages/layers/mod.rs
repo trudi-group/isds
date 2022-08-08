@@ -23,7 +23,7 @@ impl Component for Layers {
 
         // add handler to make time run slower when messages are in-flight
         let slowdown_handler_index =
-            sim.add_event_handler(isds::SlowDownOnMessages::new(0.01, |_, _| true, false));
+            sim.add_event_handler(isds::SlowDownOnMessages::new(0.01, |_, _| true, true));
 
         // switch to real time
         sim.time.set_speed(1.);
