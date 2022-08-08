@@ -32,23 +32,45 @@ impl EntityAction for BuildAndBroadcastTransaction {
     }
 }
 
+/// Use `MineBlockWithLimit` if the block should be able to contain only a limited number of
+/// transactions!
 #[derive(Debug, Clone)]
 pub struct MineBlock;
 impl EntityAction for MineBlock {
     fn execute_for(&self, sim: &mut Simulation, entity: Entity) -> Result<(), Box<dyn Error>> {
         let mut node = sim.node_interface(entity);
-        NakamotoConsensus::handle_mining_success(&mut node)
+        NakamotoConsensus::handle_mining_success(&mut node, None)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MineBlockWithLimit(pub usize);
+impl EntityAction for MineBlockWithLimit {
+    fn execute_for(&self, sim: &mut Simulation, entity: Entity) -> Result<(), Box<dyn Error>> {
+        let block_limit = self.0;
+        let mut node = sim.node_interface(entity);
+        NakamotoConsensus::handle_mining_success(&mut node, Some(block_limit))
     }
 }
 
 #[derive(Debug, Default)]
 pub struct NakamotoConsensus {
     flooding: SimpleFlooding<InventoryItem>,
+    block_limit: Option<usize>,
 }
 impl NakamotoConsensus {
     pub fn new() -> Self {
         Self {
             flooding: SimpleFlooding::new(),
+            /// Currently, the block size limit set here is only used when a block is mined
+            /// following a `poke`.
+            block_limit: None,
+        }
+    }
+    pub fn new_with_block_limit(block_limit: usize) -> Self {
+        Self {
+            flooding: SimpleFlooding::new(),
+            block_limit: Some(block_limit),
         }
     }
     fn handle_transaction(node: &mut NodeInterface, tx_id: Entity) -> Result<(), Box<dyn Error>> {
@@ -81,11 +103,14 @@ impl NakamotoConsensus {
         SimpleFlooding::flood(node, InventoryItem::Transaction(tx_id));
         Ok(())
     }
-    fn handle_mining_success(node: &mut NodeInterface) -> Result<(), Box<dyn Error>> {
+    fn handle_mining_success(
+        node: &mut NodeInterface,
+        block_limit: Option<usize>,
+    ) -> Result<(), Box<dyn Error>> {
         let tip = node.get::<NakamotoNodeState>().tip;
         let contents = node
             .get::<NakamotoNodeState>()
-            .drain_unconfirmed_transactions();
+            .drain_unconfirmed_transactions(block_limit);
         let block_header = node.spawn_block(tip, contents);
         let block_contents = node.get_block_contents(block_header.id).unwrap().clone();
         node.log(&format!(
@@ -141,7 +166,7 @@ impl Protocol for NakamotoConsensus {
     }
 
     fn handle_poke(&self, mut node: NodeInterface) -> Result<(), Box<dyn Error>> {
-        Self::handle_mining_success(&mut node)
+        Self::handle_mining_success(&mut node, self.block_limit)
     }
 
     fn handle_peer_set_update(
@@ -213,9 +238,19 @@ impl NakamotoNodeState {
             self.txes_unconfirmed.insert(tx_id);
         }
     }
-    fn drain_unconfirmed_transactions(&mut self) -> impl IntoIterator<Item = Entity> {
+    fn drain_unconfirmed_transactions(
+        &mut self,
+        block_limit: Option<usize>,
+    ) -> impl IntoIterator<Item = Entity> {
         let mut tmp = BTreeSet::new();
-        std::mem::swap(&mut self.txes_unconfirmed, &mut tmp);
+        if let Some(block_limit) = block_limit {
+            tmp.extend(self.txes_unconfirmed.iter().take(block_limit).copied());
+            for tx in tmp.iter() {
+                self.txes_unconfirmed.remove(tx);
+            }
+        } else {
+            std::mem::swap(&mut self.txes_unconfirmed, &mut tmp);
+        }
         tmp
     }
     pub fn block_header(&self, block_id: Entity) -> Option<BlockHeader> {
@@ -361,6 +396,49 @@ mod tests {
             .clone();
 
         assert!(block_contents.len() == 1);
+    }
+
+    #[wasm_bindgen_test]
+    fn block_limits_get_honored() {
+        let mut sim = Simulation::new();
+        sim.add_event_handler(InvokeProtocolForAllNodes(
+            NakamotoConsensus::new_with_block_limit(2),
+        ));
+
+        let node = sim.spawn_random_node();
+
+        sim.do_now(ForSpecific(
+            node,
+            BuildAndBroadcastTransaction::from("Alice", "Bob", 32),
+        ));
+        sim.do_now(ForSpecific(
+            node,
+            BuildAndBroadcastTransaction::from("Charlie", "Bob", 15),
+        ));
+        sim.do_now(ForSpecific(
+            node,
+            BuildAndBroadcastTransaction::from("Alice", "Charlie", 12),
+        ));
+        sim.catch_up(100.);
+
+        sim.do_now(ForSpecific(node, MineBlockWithLimit(2)));
+        sim.catch_up(100.);
+
+        let state = get_state(&sim, node);
+
+        assert_eq!(1, state.txes_unconfirmed.len());
+        assert_eq!(2, state.txes_confirmed.len());
+
+        let block_id = state.tip().unwrap();
+        let block_contents = sim
+            .world
+            .query_one::<&BlockContents>(block_id)
+            .unwrap()
+            .get()
+            .expect("Block contents do not exist?")
+            .clone();
+
+        assert_eq!(2, block_contents.len());
     }
 
     #[wasm_bindgen_test]

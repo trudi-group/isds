@@ -14,6 +14,11 @@ pub struct Layers {
     _key_listener: gloo::events::EventListener,
 }
 
+// Specifying the desired block size limit... (in number of transactions).
+const BLOCK_SIZE_LIMIT: usize = 5;
+const MINE_BLOCK: isds::nakamoto_consensus::MineBlockWithLimit =
+    isds::nakamoto_consensus::MineBlockWithLimit(BLOCK_SIZE_LIMIT);
+
 impl Component for Layers {
     type Message = ();
     type Properties = ();
@@ -127,7 +132,7 @@ impl Layers {
     fn view_consensus_layer(&self) -> Html {
         let on_button = {
             let sim = self.sim.clone();
-            Callback::from(move |_| sim.borrow_mut().do_now(isds::ForRandomNode(isds::PokeNode)))
+            Callback::from(move |_| sim.borrow_mut().do_now(isds::ForRandomNode(MINE_BLOCK)))
         };
         view_layer(
             html! {
@@ -179,7 +184,7 @@ impl Layers {
 fn init_simulation() -> isds::Simulation {
     let mut sim = isds::Simulation::new_with_underlay_dimensions(320., 160.);
     sim.add_event_handler(isds::InvokeProtocolForAllNodes(
-        isds::nakamoto_consensus::NakamotoConsensus::default(),
+        isds::nakamoto_consensus::NakamotoConsensus::new_with_block_limit(BLOCK_SIZE_LIMIT),
     ));
 
     // init network
@@ -207,10 +212,7 @@ fn init_simulation() -> isds::Simulation {
         ),
     ));
     // mine a block
-    sim.do_now(isds::ForSpecific(
-        power_node,
-        isds::nakamoto_consensus::MineBlock,
-    ));
+    sim.do_now(isds::ForSpecific(power_node, MINE_BLOCK));
 
     // make two blocks with some arbitrary transactions (so they don't look so empty)
     for _ in 0..2 {
@@ -219,16 +221,13 @@ fn init_simulation() -> isds::Simulation {
         }
 
         // mine a block
-        sim.do_now(isds::ForSpecific(
-            power_node,
-            isds::nakamoto_consensus::MineBlock,
-        ));
+        sim.do_now(isds::ForSpecific(power_node, MINE_BLOCK));
     }
     sim.work_until(isds::SimSeconds::from(1.));
 
     // magically mine a block at random intervals centered around 10 minutes
     sim.do_now(isds::AtRandomIntervals::new(
-        isds::ForRandomNode(isds::nakamoto_consensus::MineBlock),
+        isds::ForRandomNode(MINE_BLOCK),
         isds::SimSeconds::from(600.),
     ));
 
