@@ -60,7 +60,8 @@ impl Component for NetView {
                     { " .phantom-link { opacity: 0.0; } .phantom-link:hover { opacity: 1.0; }" }
                 </style>
                 <svg
-                   viewBox={ format!("{} {} {} {}",
+                    class={ "is-unselectable" } // for avoiding accidental selects on Chrome
+                    viewBox={ format!("{} {} {} {}",
                        -buffer_space,
                        -buffer_space,
                        self.sim.borrow().underlay_width() + 2. * buffer_space,
