@@ -3,7 +3,7 @@
 @import "../common/fontawesome/scss/solid";
 
 // For putting descriptions above the layer simulation on small screens
-@media(max-width: $desktop) {
+@media(max-width: ($desktop - 1)) {
   .is-reversed-desktop {
     display: flex;
     flex-direction: column-reverse;
