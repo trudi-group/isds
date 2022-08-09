@@ -241,7 +241,7 @@ fn random_node(
     underlay_config: &UnderlayConfig,
     rng: &mut impl Rng,
 ) -> (UnderlayNodeName, UnderlayPosition) {
-    let name = format!("node{:#04}", rng.gen_range(0..10_000));
+    let name = format!("n{:#04}", rng.gen_range(0..10_000));
     (
         UnderlayNodeName(name),
         UnderlayPosition {

@@ -316,9 +316,7 @@ impl Wallet {
                     { &self.cache.monitored_address }
                 </span>
                 { "connected to node" }
-                <span class="ml-2 is-family-code">
-                    { self.cache.full_node.map_or("None".to_string(), |id| self.sim.borrow().name(id)) }
-                </span>
+                <EntityName entity={ self.cache.full_node } class="ml-2 is-family-code" />
             </div>
         }
     }

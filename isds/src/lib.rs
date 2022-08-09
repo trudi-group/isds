@@ -17,6 +17,7 @@ pub use simulation::*;
 pub struct Isds {
     pub sim: SharedSimulation,
     last_render: RealSeconds,
+    highlight: components::common::Highlight,
     _render_loop_handle: Option<AnimationFrame>,
 }
 
@@ -24,6 +25,7 @@ pub struct Isds {
 pub struct IsdsContext {
     pub sim: SharedSimulation,
     pub last_render: RealSeconds,
+    pub highlight: components::common::Highlight,
 }
 
 #[derive(Debug, Clone)]
@@ -53,13 +55,19 @@ impl Component for Isds {
         Self {
             sim,
             last_render: 0.,
+            highlight: Default::default(),
             _render_loop_handle: None,
         }
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
+        let context = IsdsContext {
+            sim: self.sim.clone(),
+            last_render: self.last_render,
+            highlight: self.highlight.clone(),
+        };
         html! {
-            < ContextProvider<IsdsContext> context={ IsdsContext { sim: self.sim.clone(), last_render: self.last_render }}>
+            < ContextProvider<IsdsContext> { context }>
                 { for ctx.props().children.iter() }
             </ ContextProvider<IsdsContext>>
         }
