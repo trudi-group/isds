@@ -100,7 +100,7 @@ impl Component for NetView {
             }
             Msg::NodeMouseOver(node) => {
                 if ctx.props().node_highlight_on_hover {
-                    self.highlight.set_highlight(node);
+                    self.highlight.set_hover(node);
                     true
                 } else {
                     false
@@ -108,7 +108,7 @@ impl Component for NetView {
             }
             Msg::NodeMouseOut => {
                 if ctx.props().node_highlight_on_hover {
-                    self.highlight.reset_highlight();
+                    self.highlight.reset_hover();
                     true
                 } else {
                     false
@@ -155,8 +155,9 @@ impl NetView {
                                 classes!(
                                     self.highlight
                                         .is(node)
-                                        .then_some(ctx.props().node_highlight_class.clone())
-                                    )
+                                        .then_some(ctx.props().node_highlight_class.clone()),
+                                    "is-clickable",
+                                )
                             }
                             cx={ pos.x.to_string() }
                             cy={ pos.y.to_string() }
@@ -185,7 +186,7 @@ impl NetView {
                         )) }
                     >
                         <line
-                            class="phantom-link"
+                            class={ classes!("phantom-link", "is-clickable") }
                             x1={ line.start.x.to_string() }
                             y1={ line.start.y.to_string() }
                             x2={ line.end.x.to_string() }
@@ -202,6 +203,7 @@ impl NetView {
                                     x2={ line.end.x.to_string() }
                                     y2={ line.end.y.to_string() }
                                     stroke="gray"
+                                    class={ "is-clickable" }
                                 />
                             } else {
                                 // TODO: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/marker
@@ -212,6 +214,7 @@ impl NetView {
                                     y2={ line.end.y.to_string() }
                                     stroke="lightgray"
                                     stroke-dasharray="8,8"
+                                    class={ "is-clickable" }
                                 />
                             }
                         }
