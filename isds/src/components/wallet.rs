@@ -312,11 +312,11 @@ impl Wallet {
         html! {
             <div>
                 { "Wallet of" }
-                <span class="mx-2 is-size-5 is-family-code is-underlined">
+                <span class="mx-2 is-size-5 is-family-code">
                     { &self.cache.monitored_address }
                 </span>
                 { "connected to node" }
-                <EntityName entity={ self.cache.full_node } class="ml-2 is-family-code" />
+                <EntityName entity={ self.cache.full_node } class="ml-2 is-family-code is-underlined" />
             </div>
         }
     }

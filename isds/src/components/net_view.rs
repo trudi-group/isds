@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 
 pub struct NetView {
     sim: SharedSimulation,
+    highlight: Highlight,
     colors: PseudorandomColors,
     edges: EdgeMap,
     _context_handle: yew::context::ContextHandle<IsdsContext>,
@@ -15,6 +16,8 @@ pub struct NetView {
 pub enum Msg {
     Rendered(RealSeconds),
     NodeClick(Entity),
+    NodeMouseOver(Entity),
+    NodeMouseOut,
     LinkClick(Entity, Entity),
 }
 
@@ -22,6 +25,12 @@ pub enum Msg {
 pub struct Props {
     #[prop_or_default()]
     pub on_node_click: Callback<Entity>,
+
+    #[prop_or(false)]
+    pub node_highlight_on_hover: bool,
+
+    #[prop_or_default()]
+    pub node_highlight_class: Classes,
 
     #[prop_or(50.)]
     pub buffer_space: f32,
@@ -35,7 +44,7 @@ impl Component for NetView {
     fn create(ctx: &Context<Self>) -> Self {
         let (context_data, _context_handle) = get_isds_context!(ctx, Self);
 
-        let sim = context_data.sim;
+        let IsdsContext { sim, highlight, .. } = context_data;
 
         // TODO as props!
         let seed_palette = common::DEFAULT_SEED_PALETTE;
@@ -46,6 +55,7 @@ impl Component for NetView {
 
         Self {
             sim,
+            highlight,
             colors,
             edges,
             _context_handle,
@@ -88,6 +98,22 @@ impl Component for NetView {
                 ctx.props().on_node_click.emit(node);
                 false
             }
+            Msg::NodeMouseOver(node) => {
+                if ctx.props().node_highlight_on_hover {
+                    self.highlight.set_highlight(node);
+                    true
+                } else {
+                    false
+                }
+            }
+            Msg::NodeMouseOut => {
+                if ctx.props().node_highlight_on_hover {
+                    self.highlight.reset_highlight();
+                    true
+                } else {
+                    false
+                }
+            }
             Msg::LinkClick(node1, node2) => {
                 // TODO perhaps configure link click action using a property?
                 log!(format!(
@@ -125,10 +151,19 @@ impl NetView {
                 html! {
                     <g>
                         <circle
+                            class={
+                                classes!(
+                                    self.highlight
+                                        .is(node)
+                                        .then_some(ctx.props().node_highlight_class.clone())
+                                    )
+                            }
                             cx={ pos.x.to_string() }
                             cy={ pos.y.to_string() }
                             r={ r.to_string() }
                             onclick={ link.callback(move |_| Msg::NodeClick(node)) }
+                            onmouseover={ link.callback(move |_| Msg::NodeMouseOver(node)) }
+                            onmouseout={ link.callback(|_| Msg::NodeMouseOut) }
                         />
                         { self.view_blocks(node_state, pos.x + 8., pos.y - 8.) }
                     </g>

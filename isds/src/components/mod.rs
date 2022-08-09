@@ -1,6 +1,7 @@
 use super::*;
 
 pub mod common;
+pub use common::Highlight;
 
 mod blockchain_view;
 pub use blockchain_view::BlockchainView;

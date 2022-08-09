@@ -169,7 +169,12 @@ impl Layers {
                             Some(self.slowdown_handler_index)
                         }
                     />
-                    <isds::NetView { on_node_click } buffer_space=25. />
+                    <isds::NetView
+                        { on_node_click }
+                        node_highlight_on_hover={ true }
+                        node_highlight_class={ "has-fill-info" }
+                        buffer_space=25.
+                    />
                 </>
             },
             html! {

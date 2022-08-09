@@ -45,7 +45,7 @@ pub fn entity_name(props: &Props) -> Html {
             class={
                 classes!(
                     highlight_on_hover.then_some("is-unselectable"),
-                    entity.map_or(false, |e| hl.is(e)).then_some("has-background-light"),
+                    entity.map_or(false, |e| hl.is(e)).then_some("has-text-info"),
                     props.class.clone())
             }
             onmouseover={ on_mouse_over }

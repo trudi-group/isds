@@ -80,9 +80,7 @@ impl Component for BlockchainView {
         html! {
             <>
                 { "The longest chain, as seen by node" }
-                <span class="ml-2 is-family-code">
-                    <EntityName entity={ *viewing_node } class="ml-2 is-family-code" />
-                </span>
+                <EntityName entity={ *viewing_node } class="ml-2 is-family-code is-underlined" />
                 <svg
                    viewBox={ format!("{} {} {} {}",
                        -inter_block_space,
