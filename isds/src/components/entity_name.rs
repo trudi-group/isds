@@ -25,28 +25,18 @@ pub fn entity_name(props: &Props) -> Html {
         ..
     } = props;
 
-    let on_mouse_over = {
-        if highlight_on_hover && entity.is_some() {
-            let hl = hl.clone();
-            Callback::from(move |_| hl.set_hover(entity.unwrap()))
-        } else {
-            Callback::noop()
-        }
-    };
-
-    let on_mouse_out = {
-        if highlight_on_hover {
-            let hl = hl.clone();
-            Callback::from(move |_| hl.reset_hover())
-        } else {
-            Callback::noop()
-        }
+    let (on_mouse_over, on_mouse_out) = if highlight_on_hover && entity.is_some() {
+        (
+            hl.set_hover_callback(entity.unwrap()),
+            hl.reset_hover_callback(),
+        )
+    } else {
+        (Callback::noop(), Callback::noop())
     };
 
     let on_click = {
         if highlight_on_click && entity.is_some() {
-            let hl = hl.clone();
-            Callback::from(move |_| hl.toggle_select(entity.unwrap()))
+            hl.toggle_select_callback(entity.unwrap())
         } else {
             Callback::noop()
         }

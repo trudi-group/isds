@@ -5,6 +5,7 @@ use nakamoto_consensus::NakamotoNodeState;
 
 pub struct BlockchainView {
     sim: SharedSimulation,
+    highlight: Highlight,
     colors: PseudorandomColors,
     cache: Cache,
     _context_handle: yew::context::ContextHandle<IsdsContext>,
@@ -21,6 +22,9 @@ pub struct Props {
     pub max_visible_blocks: usize,
     #[prop_or_default]
     pub viewing_node: Option<Entity>,
+
+    #[prop_or_default()]
+    pub highlight_class: Classes,
 
     #[prop_or(50.)]
     pub inter_block_space: f32,
@@ -48,7 +52,7 @@ impl Component for BlockchainView {
     fn create(ctx: &Context<Self>) -> Self {
         let (context_data, _context_handle) = get_isds_context!(ctx, Self);
 
-        let sim = context_data.sim;
+        let IsdsContext { sim, highlight, .. } = context_data;
 
         // TODO as props!
         let seed_palette = common::DEFAULT_SEED_PALETTE;
@@ -58,6 +62,7 @@ impl Component for BlockchainView {
 
         Self {
             sim,
+            highlight,
             colors,
             cache: Default::default(), // will be set on first render
             _context_handle,
@@ -107,12 +112,14 @@ impl Component for BlockchainView {
                 let sim = self.sim.borrow();
                 let state = get_node_state(ctx.props().viewing_node, &sim);
 
-                // only recalculate the view if the blockchain tip changed
-                if let Some(state) = state {
+                // only recalculate the view if the blockchain tip or the highlight changed
+                let tip_changed = if let Some(state) = state {
                     self.cache.update(&state)
                 } else {
                     false
-                }
+                };
+                let hightlight_changed = self.highlight.update();
+                tip_changed || hightlight_changed
             }
         }
     }
@@ -139,7 +146,12 @@ impl BlockchainView {
             </>
         }
     }
-    fn view_blocks(&self, blocks: Vec<(Option<Entity>, Vec<String>)>, ctx: &Context<Self>) -> Html {
+    #[allow(clippy::type_complexity)] // TODO
+    fn view_blocks(
+        &self,
+        blocks: Vec<(Option<Entity>, Vec<(Option<Entity>, String)>)>,
+        ctx: &Context<Self>,
+    ) -> Html {
         let Props {
             inter_block_space,
             block_size,
@@ -195,7 +207,7 @@ impl BlockchainView {
         &self,
         block_x: f32,
         block_id: Entity,
-        transactions_shortform: Vec<String>,
+        transactions_shortform: Vec<(Option<Entity>, String)>,
         ctx: &Context<Self>,
     ) -> Html {
         let Props {
@@ -242,8 +254,8 @@ impl BlockchainView {
                 {
                     self.view_block_text(
                         block_x,
-                        vec!["Genesis".to_string(),
-                        "block".to_string()],
+                        vec![(None, "Genesis".to_string()),
+                        (None, "block".to_string())],
                         "gray".to_string(),
                         ctx
                     )
@@ -291,22 +303,25 @@ impl BlockchainView {
     fn view_block_text(
         &self,
         block_x: f32,
-        lines: Vec<String>,
+        lines_with_associated_entities: Vec<(Option<Entity>, String)>,
         color: String,
         ctx: &Context<Self>,
     ) -> Html {
         let Props {
+            highlight_class: tx_highlight_class,
             block_size,
             stroke_width,
             font_size,
             ..
         } = ctx.props();
+        let hl = &self.highlight;
+
         let text_x = block_x + 2. * stroke_width;
         let text_y = 2. * stroke_width;
 
         let max_lines = ((block_size - 4. * stroke_width) / (font_size * 1.2)).floor() as usize;
         let max_line_len = ((block_size - 4. * stroke_width) / (font_size * 0.6)).floor() as usize;
-        let lines = maybe_truncate_lines(lines, max_lines, max_line_len);
+        let lines = maybe_truncate_lines(lines_with_associated_entities, max_lines, max_line_len);
 
         html! {
             <text
@@ -317,12 +332,39 @@ impl BlockchainView {
                 class="is-unselectable"
                 fill={ color }>
                 {
-                    lines.into_iter().enumerate().map(|(i, line)| html! {
-                        <tspan
-                            x={ text_x.to_string() }
-                            dy={ if i == 0 { "1em" } else { "1.2em" } }>
-                            { line }
-                        </tspan>
+                    lines.into_iter().enumerate().map(|(i, (entity, line))| {
+
+                        let (onmouseover, onmouseout, onclick) = if let Some(e) = entity {
+                            (
+                                hl.set_hover_callback(e),
+                                hl.reset_hover_callback(),
+                                hl.toggle_select_callback(e)
+                            )
+                            } else {
+                            (Callback::noop(), Callback::noop(), Callback::noop())
+                        };
+
+                        html! {
+                            <tspan
+                                x={ text_x.to_string() }
+                                dy={ if i == 0 { "1em" } else { "1.2em" } }
+                                class={
+                                    classes!(
+                                        entity.map(|_| "is-clickable"),
+                                        entity.and_then(
+                                            |e| self.highlight.is(e).then_some(
+                                                tx_highlight_class.clone()
+                                            )
+                                        ),
+                                    )
+                                }
+                                { onmouseover }
+                                { onmouseout }
+                                { onclick }
+                            >
+                                { line }
+                            </tspan>
+                        }
                     }).collect::<Html>()
                 }
             </text>
@@ -344,11 +386,12 @@ impl Cache {
     }
 }
 
+#[allow(clippy::type_complexity)] // TODO
 fn last_blocks_in_longest_chain(
     state: &nakamoto_consensus::NakamotoNodeState,
     max_blocks: usize,
     sim: &Simulation,
-) -> Vec<(Option<Entity>, Vec<String>)> {
+) -> Vec<(Option<Entity>, Vec<(Option<Entity>, String)>)> {
     let mut chain = vec![];
     let mut block_id = state.tip();
     for _ in 0..max_blocks {
@@ -369,13 +412,16 @@ fn get_node_state(
     node_id.and_then(|node_id| sim.world.get::<NakamotoNodeState>(node_id).ok())
 }
 
-fn get_transactions_shortform(block_id: Option<Entity>, sim: &Simulation) -> Vec<String> {
+fn get_transactions_shortform(
+    block_id: Option<Entity>,
+    sim: &Simulation,
+) -> Vec<(Option<Entity>, String)> {
     if let Some(block_id) = block_id {
         let block_contents = sim.world.get::<BlockContents>(block_id).unwrap();
         block_contents
             .iter()
-            .map(|tx_id| sim.world.get::<Transaction>(*tx_id).unwrap())
-            .map(|tx| transaction_shortform(&tx))
+            .map(|&txid| (txid, sim.world.get::<Transaction>(txid).unwrap()))
+            .map(|(txid, tx)| (Some(txid), transaction_shortform(&tx)))
             .collect()
     } else {
         vec![]
@@ -385,12 +431,12 @@ fn get_transactions_shortform(block_id: Option<Entity>, sim: &Simulation) -> Vec
 fn get_unconfirmed_transactions_shortform(
     state: &NakamotoNodeState,
     sim: &Simulation,
-) -> Vec<String> {
+) -> Vec<(Option<Entity>, String)> {
     state
         .txes_unconfirmed()
         .iter()
-        .map(|tx_id| sim.world.get::<Transaction>(*tx_id).unwrap())
-        .map(|tx| transaction_shortform(&tx))
+        .map(|&txid| (txid, sim.world.get::<Transaction>(txid).unwrap()))
+        .map(|(txid, tx)| (Some(txid), transaction_shortform(&tx)))
         .collect()
 }
 fn transaction_shortform(tx: &Transaction) -> String {
@@ -403,17 +449,17 @@ fn transaction_shortform(tx: &Transaction) -> String {
 }
 
 fn maybe_truncate_lines(
-    mut lines: Vec<String>,
+    mut lines: Vec<(Option<Entity>, String)>,
     max_lines: usize,
     max_line_len: usize,
-) -> Vec<String> {
+) -> Vec<(Option<Entity>, String)> {
     if lines.len() > max_lines {
         lines.truncate(max_lines.saturating_sub(1));
-        lines.push("...".to_string());
+        lines.push((None, "...".to_string()));
     }
     lines
         .into_iter()
-        .map(|line| maybe_truncate_line(line, max_line_len))
+        .map(|(entity, line)| (entity, maybe_truncate_line(line, max_line_len)))
         .collect()
 }
 

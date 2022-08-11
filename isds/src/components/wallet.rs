@@ -7,6 +7,7 @@ use web_sys::{HtmlInputElement, HtmlSelectElement};
 
 pub struct Wallet {
     sim: SharedSimulation,
+    highlight: Highlight,
     cache: TransactionsCache,
     send_modal: SendModalState,
     _context_handle: yew::context::ContextHandle<IsdsContext>,
@@ -26,6 +27,9 @@ pub enum Msg {
     ToggleSendModal,
     BroadcastNewTransactionFromWhitelist(u64, String),
     BroadcastNewTransactionFromModal,
+    TxClick(Entity),
+    TxMouseOver(Entity),
+    TxMouseOut,
 }
 
 #[derive(Properties, PartialEq)]
@@ -62,7 +66,7 @@ impl Component for Wallet {
     fn create(ctx: &Context<Self>) -> Self {
         let (context_data, _context_handle) = get_isds_context!(ctx, Self);
 
-        let sim = context_data.sim;
+        let IsdsContext { sim, highlight, .. } = context_data;
 
         let mut cache = TransactionsCache::new(ctx.props().address.clone());
         cache.full_node = ctx.props().full_node;
@@ -70,6 +74,7 @@ impl Component for Wallet {
 
         Self {
             sim,
+            highlight,
             cache,
             send_modal: Default::default(),
             _context_handle,
@@ -80,7 +85,7 @@ impl Component for Wallet {
         html! {
             <div class={ ctx.props().class.clone() }>
                 { self.view_top_infos() }
-                { self.view_transactions() }
+                { self.view_transactions(ctx) }
                 if ctx.props().send_whitelist.is_some() {
                     { self.view_constrained_send_ui(ctx) }
                 } else {
@@ -92,7 +97,11 @@ impl Component for Wallet {
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            Msg::Rendered(_) => self.cache.update(&self.sim.borrow()),
+            Msg::Rendered(_) => {
+                let cache_changed = self.cache.update(&self.sim.borrow());
+                let highlight_changed = self.highlight.update();
+                cache_changed || highlight_changed
+            }
             Msg::ToggleSendModal => {
                 self.send_modal.toggle();
                 self.send_modal.reset_fields();
@@ -124,6 +133,18 @@ impl Component for Wallet {
                 }
                 true
             }
+            Msg::TxClick(txid) => {
+                self.highlight.toggle_select(txid);
+                true
+            }
+            Msg::TxMouseOver(txid) => {
+                self.highlight.set_hover(txid);
+                true
+            }
+            Msg::TxMouseOut => {
+                self.highlight.reset_hover();
+                true
+            }
         }
     }
 
@@ -143,7 +164,7 @@ impl Wallet {
             </>
         }
     }
-    fn view_transactions(&self) -> Html {
+    fn view_transactions(&self, ctx: &Context<Self>) -> Html {
         let max_columns = 4;
         let relevant_transactions = self.cache.iter_all_transactions_newest_first();
         let (visible_transactions, value_before) =
@@ -153,18 +174,19 @@ impl Wallet {
                     Some(
                         relevant_transactions
                             .skip(max_columns)
-                            .map(|(_, tx)| self.cache.value_of(tx))
+                            .map(|(_, _, tx)| self.cache.value_of(tx))
                             .sum(),
                     ),
                 )
             } else {
                 (relevant_transactions.clone().take(max_columns), None)
             };
+        let link = ctx.link();
         html! {
             <table class="table is-fullwidth mb-1">
                 <tbody>
                     {
-                        visible_transactions.map(|(confirmations, tx)| {
+                        visible_transactions.map(|(confirmations, txid, tx)| {
                             let coin_value = coins_from(self.cache.value_of(tx));
                             let value_color_class = if confirmations < 1 {
                                 "has-text-grey-light"
@@ -186,7 +208,18 @@ impl Wallet {
                                 &tx.to
                             };
                             html! {
-                                <tr>
+                                <tr
+                                    class={
+                                        classes!(
+                                            "is-unselectable",
+                                            "is-clickable",
+                                            self.highlight.is(txid).then_some("has-background-info"),
+                                        )
+                                    }
+                                    onclick={ link.callback(move |_| Msg::TxClick(txid)) }
+                                    onmouseover={ link.callback(move |_| Msg::TxMouseOver(txid)) }
+                                    onmouseout={ link.callback(|_| Msg::TxMouseOut) }
+                                >
                                     <td>
                                         <span class={classes!("icon", "is-size-6", icon_color_class)}>
                                             if confirmations < 3 {
@@ -455,9 +488,9 @@ struct TransactionsCache {
     full_node: Option<Entity>,
     monitored_address: Address,
     tip: Option<BlockHeader>,
-    txes_confirmed: VecDeque<(usize, Transaction)>,
+    txes_confirmed: VecDeque<(usize, Entity, Transaction)>,
     txids_unconfirmed: BTreeSet<Entity>,
-    txes_unconfirmed: VecDeque<Transaction>,
+    txes_unconfirmed: VecDeque<(Entity, Transaction)>,
 }
 impl TransactionsCache {
     fn new(monitored_address: Address) -> Self {
@@ -482,23 +515,26 @@ impl TransactionsCache {
     fn total_value_confirmed(&self) -> i64 {
         self.txes_confirmed
             .iter()
-            .map(|(_, tx)| self.value_of(tx))
+            .map(|(_, _, tx)| self.value_of(tx))
             .sum()
     }
     fn total_value_unconfirmed(&self) -> i64 {
         self.txes_unconfirmed
             .iter()
-            .map(|tx| self.value_of(tx))
+            .map(|(_, tx)| self.value_of(tx))
             .sum()
     }
     fn iter_all_transactions_newest_first(
         &self,
-    ) -> impl Iterator<Item = (usize, &Transaction)> + Clone {
-        self.txes_unconfirmed.iter().map(|tx| (0, tx)).chain(
-            self.txes_confirmed
-                .iter()
-                .map(|(height, tx)| (self.tip_height() - height + 1, tx)),
-        )
+    ) -> impl Iterator<Item = (usize, Entity, &Transaction)> + Clone {
+        self.txes_unconfirmed
+            .iter()
+            .map(|(id, tx)| (0, *id, tx))
+            .chain(
+                self.txes_confirmed
+                    .iter()
+                    .map(|(height, id, tx)| (self.tip_height() - height + 1, *id, tx)),
+            )
     }
     fn update(&mut self, sim: &Simulation) -> bool {
         if let Some(full_node) = self.full_node {
@@ -547,7 +583,7 @@ impl TransactionsCache {
                 let tx = get_transaction_unchecked(txid, sim);
                 if self.is_relevant(&tx) {
                     self.txids_unconfirmed.insert(txid);
-                    self.txes_unconfirmed.push_front((*tx).clone());
+                    self.txes_unconfirmed.push_front((txid, (*tx).clone()));
                     changed = true;
                 }
             }
@@ -559,7 +595,7 @@ impl TransactionsCache {
                 let tx = get_transaction_unchecked(txid, sim);
                 if self.is_relevant(&tx) {
                     self.txids_unconfirmed.insert(txid);
-                    self.txes_unconfirmed.push_front((*tx).clone());
+                    self.txes_unconfirmed.push_front((txid, (*tx).clone()));
                 }
             }
             true
@@ -579,13 +615,13 @@ impl TransactionsCache {
     ) -> Option<Entity> {
         let (block_header, block_contents) = get_block_unchecked(block_id, sim);
         let block_height = block_header.height;
-        for tx in block_contents
+        for (txid, tx) in block_contents
             .iter()
-            .map(|tx_id| get_transaction_unchecked(*tx_id, sim))
+            .map(|txid| (txid, get_transaction_unchecked(*txid, sim)))
         {
             if self.is_relevant(&tx) {
                 self.txes_confirmed
-                    .push_front((block_height, (*tx).clone()));
+                    .push_front((block_height, *txid, (*tx).clone()));
             }
         }
         block_header.id_prev
@@ -622,8 +658,8 @@ fn get_block_contents_unchecked(block_id: Entity, sim: &Simulation) -> hecs::Ref
     sim.world.get::<BlockContents>(block_id).unwrap()
 }
 
-fn get_transaction_unchecked(tx_id: Entity, sim: &Simulation) -> hecs::Ref<Transaction> {
-    sim.world.get::<Transaction>(tx_id).unwrap()
+fn get_transaction_unchecked(txid: Entity, sim: &Simulation) -> hecs::Ref<Transaction> {
+    sim.world.get::<Transaction>(txid).unwrap()
 }
 
 fn get_state(node_id: Entity, sim: &Simulation) -> Option<hecs::Ref<NakamotoNodeState>> {

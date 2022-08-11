@@ -7,10 +7,29 @@ use std::rc::Rc;
 pub struct Highlight {
     hovered: Rc<RefCell<Option<Entity>>>,
     selected: Rc<RefCell<Option<Entity>>>,
+    last_state: (Option<Entity>, Option<Entity>),
 }
 
 impl Highlight {
-    #![allow(clippy::unnecessary_unwrap)]
+    /// Updates the `last_state` and returns `true` if it changed since the last update.
+    pub fn update(&mut self) -> bool {
+        let hovered = self.hovered.try_borrow();
+        let selected = self.selected.try_borrow();
+
+        if hovered.is_err() || selected.is_err() {
+            log!("Error borrowing the highlight!");
+            return false;
+        }
+
+        let current_state = (*hovered.unwrap(), *selected.unwrap());
+        if self.last_state != current_state {
+            self.last_state = current_state;
+            true
+        } else {
+            false
+        }
+    }
+    #[allow(clippy::unnecessary_unwrap)]
     /// Whether this is a highlighed entity.
     pub fn is(&self, entity: Entity) -> bool {
         let hovered = self.hovered.try_borrow();
@@ -66,5 +85,17 @@ impl Highlight {
         } else {
             log!("Error borrowing the highlight!");
         }
+    }
+    pub fn set_hover_callback<IN>(&self, entity: Entity) -> Callback<IN> {
+        let hl = self.clone();
+        Callback::from(move |_| hl.set_hover(entity))
+    }
+    pub fn reset_hover_callback<IN>(&self) -> Callback<IN> {
+        let hl = self.clone();
+        Callback::from(move |_| hl.reset_hover())
+    }
+    pub fn toggle_select_callback<IN>(&self, entity: Entity) -> Callback<IN> {
+        let hl = self.clone();
+        Callback::from(move |_| hl.toggle_select(entity))
     }
 }

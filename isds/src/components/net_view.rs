@@ -30,7 +30,7 @@ pub struct Props {
     pub node_highlight_on_hover: bool,
 
     #[prop_or_default()]
-    pub node_highlight_class: Classes,
+    pub highlight_class: Classes,
 
     #[prop_or(50.)]
     pub buffer_space: f32,
@@ -81,7 +81,7 @@ impl Component for NetView {
                     // { self.view_palette() }
                     { self.view_edges(ctx) }
                     { self.view_nodes(ctx) }
-                    { self.view_messages() }
+                    { self.view_messages(ctx) }
                 </svg>
             </>
         }
@@ -155,7 +155,7 @@ impl NetView {
                                 classes!(
                                     self.highlight
                                         .is(node)
-                                        .then_some(ctx.props().node_highlight_class.clone()),
+                                        .then_some(ctx.props().highlight_class.clone()),
                                     "is-clickable",
                                 )
                             }
@@ -223,7 +223,7 @@ impl NetView {
             })
             .collect()
     }
-    fn view_messages(&self) -> Html {
+    fn view_messages(&self, ctx: &Context<NetView>) -> Html {
         // TODO: currently more like: view_nakamoto_consensus_messages...
         let time_now = self.sim.borrow().time.now();
         self.sim
@@ -238,12 +238,19 @@ impl NetView {
             .map(|(_, (trajectory, time_span, message))| {
                 let (x, y) = message_position(trajectory, time_span, time_now);
                 match message.0 {
-                    nakamoto_consensus::InventoryItem::Transaction(_) => {
+                    nakamoto_consensus::InventoryItem::Transaction(txid) => {
                         html! {
                             <circle
+                                class={
+                                    classes!(
+                                        self.highlight
+                                            .is(txid)
+                                            .then_some(ctx.props().highlight_class.clone()),
+                                    )
+                                }
                                 cx={ x.to_string() }
                                 cy={ y.to_string() }
-                                r=1
+                                r=1.5
                             />
                         }
                     }

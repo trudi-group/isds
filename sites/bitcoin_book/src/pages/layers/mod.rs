@@ -119,6 +119,7 @@ impl Layers {
             html! {
                 <isds::BlockchainView
                     viewing_node={ self.blockchain_viewing_node }
+                    highlight_class={ "has-fill-info" }
                 />
             },
             html! {
@@ -172,7 +173,7 @@ impl Layers {
                     <isds::NetView
                         { on_node_click }
                         node_highlight_on_hover={ true }
-                        node_highlight_class={ "has-fill-info" }
+                        highlight_class={ "has-fill-info" }
                         buffer_space=25.
                     />
                 </>
