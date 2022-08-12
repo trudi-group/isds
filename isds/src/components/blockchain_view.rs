@@ -83,7 +83,7 @@ impl Component for BlockchainView {
         let state = get_node_state(*viewing_node, &sim);
 
         html! {
-            <>
+            <div class="is-unselectable">
                 { "The longest chain, as seen by node" }
                 <EntityName entity={ *viewing_node } class="ml-2 is-family-code is-underlined" />
                 <svg
@@ -102,7 +102,7 @@ impl Component for BlockchainView {
                         }
                     }
                 </svg>
-            </>
+            </div>
         }
     }
 
@@ -329,7 +329,6 @@ impl BlockchainView {
                 y={ text_y.to_string() }
                 font-size = { font_size.to_string() }
                 font-family="monospace"
-                class="is-unselectable"
                 fill={ color }>
                 {
                     lines.into_iter().enumerate().map(|(i, (entity, line))| {

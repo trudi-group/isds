@@ -83,7 +83,7 @@ impl Component for Wallet {
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
-            <div class={ ctx.props().class.clone() }>
+            <div class={ classes!("is-unselectable", ctx.props().class.clone()) }>
                 { self.view_top_infos() }
                 { self.view_transactions(ctx) }
                 if ctx.props().send_whitelist.is_some() {
@@ -202,6 +202,18 @@ impl Wallet {
                             } else {
                                 "has-text-success"
                             };
+                            let tooltip = if confirmations < 1 {
+                                "Not on the blockchain".to_string()
+                            } else {
+                                format!(
+                                    "On the blockchain since {} block{}{}",
+                                    confirmations,
+                                    if confirmations > 1 { "s" } else { "" },
+                                    if confirmations < 3 {
+                                        " (3 is recommended in Bitcoin)"
+                                    } else { "" }
+                                )
+                            };
                             let counterpart = if tx.to == self.cache.monitored_address {
                                 &tx.from
                             } else {
@@ -211,17 +223,23 @@ impl Wallet {
                                 <tr
                                     class={
                                         classes!(
-                                            "is-unselectable",
                                             "is-clickable",
-                                            self.highlight.is(txid).then_some("has-background-info"),
+                                            self.highlight
+                                                .is(txid)
+                                                .then_some("has-background-info"),
                                         )
                                     }
+                                    title={ tooltip }
                                     onclick={ link.callback(move |_| Msg::TxClick(txid)) }
                                     onmouseover={ link.callback(move |_| Msg::TxMouseOver(txid)) }
                                     onmouseout={ link.callback(|_| Msg::TxMouseOut) }
                                 >
                                     <td>
-                                        <span class={classes!("icon", "is-size-6", icon_color_class)}>
+                                        <span
+                                            class={
+                                                classes!("icon", "is-size-6", icon_color_class)
+                                            }
+                                        >
                                             if confirmations < 3 {
                                                 { format!("{}/3", confirmations) }
                                             } else {
@@ -230,12 +248,20 @@ impl Wallet {
                                         </span>
                                     </td>
                                     <td>
-                                        <span class={classes!("has-text-grey-light", "is-family-code")}>
+                                        <span
+                                            class={
+                                                classes!("has-text-grey-light", "is-family-code")
+                                            }
+                                        >
                                             { counterpart }
                                         </span>
                                     </td>
                                     <td>
-                                        <span class={classes!(value_color_class, "has-text-weight-medium")}>
+                                        <span
+                                            class={
+                                                classes!(value_color_class, "has-text-weight-medium")
+                                            }
+                                        >
                                             { format!("{:+}", coins_from(self.cache.value_of(tx))) }
                                         </span>
                                     </td>
@@ -349,19 +375,24 @@ impl Wallet {
                     { &self.cache.monitored_address }
                 </span>
                 { "connected to node" }
-                <EntityName entity={ self.cache.full_node } class="ml-2 is-family-code is-underlined" />
+                <EntityName
+                    entity={ self.cache.full_node }
+                    class="ml-2 is-family-code is-underlined"
+                />
             </div>
         }
     }
     fn view_balance(&self) -> Html {
+        let confirmed_balance = coins_from(self.cache.total_value_confirmed());
+        let unconfirmed_balance = coins_from(self.cache.total_value_unconfirmed());
         html! {
             <div>
                 <span class="is-size-4">
-                    { format!("{} coins", coins_from(self.cache.total_value_confirmed())) }
+                    { format!("{} coins", confirmed_balance) }
                 </span>
                 if !self.cache.txes_unconfirmed.is_empty() {
-                    <span class="ml-2 has-text-grey-light">
-                        { format!("({:+} unconfirmed)", coins_from(self.cache.total_value_unconfirmed())) }
+                    <span class="ml-2 has-text-grey-light" title={ "Not on the blockchain" } >
+                        { format!("({:+} unconfirmed)", unconfirmed_balance) }
                     </span>
                 }
             </div>

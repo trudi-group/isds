@@ -46,7 +46,6 @@ pub fn entity_name(props: &Props) -> Html {
         <span
             class={
                 classes!(
-                    highlight_on_hover.then_some("is-unselectable"),
                     highlight_on_click.then_some("is-clickable"),
                     entity.map_or(false, |e| hl.is(e)).then_some("has-text-info"),
                     props.class.clone())
