@@ -55,17 +55,17 @@ impl Component for Layers {
     fn view(&self, _: &Context<Self>) -> Html {
         html! {
             <isds::Isds sim={ self.sim.clone() }>
-                <header class="section">
+                <header class="section"> // custom header as this is the "front page"
                     <h1 class="title">{ "Layers of Bitcoin*" }</h1>
                     <h2 class="subtitle">{ "* and \"blockchain\" more generally" }</h2>
                     { include_markdown_content!("intro.md") }
                 </header>
-                <main class="section">
+                <Main>
                     { self.view_application_layer() }
                     { self.view_blockchain_layer() }
                     { self.view_consensus_layer() }
                     { self.view_network_layer() }
-                </main>
+                </Main>
                 <Footer />
             </isds::Isds>
         }

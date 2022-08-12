@@ -4,14 +4,12 @@ use super::*;
 pub fn beyond() -> Html {
     html! {
         <>
-            <header class="section">
-                <NavBar />
-                <h2 class="title">{ "More places to learn" }</h2>
+            <Header title={ "More places to learn" }>
                 { include_markdown_content!("intro.md") }
-            </header>
-            <main class="section">
+            </Header>
+            <Main>
                 { include_markdown_content!("content.md") }
-            </main>
+            </Main>
         </>
     }
 }
