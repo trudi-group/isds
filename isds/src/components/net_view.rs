@@ -24,10 +24,13 @@ pub enum Msg {
 #[derive(Properties, PartialEq)]
 pub struct Props {
     #[prop_or_default()]
-    pub on_node_click: Callback<Entity>,
+    pub on_node_click: Option<Callback<Entity>>,
 
     #[prop_or(false)]
     pub node_highlight_on_hover: bool,
+
+    #[prop_or(true)]
+    pub toggle_edges_on_click: bool,
 
     #[prop_or_default()]
     pub highlight_class: Classes,
@@ -95,7 +98,11 @@ impl Component for NetView {
             }
             Msg::NodeClick(node) => {
                 log!(format!("Click on {}", self.sim.borrow().name(node)));
-                ctx.props().on_node_click.emit(node);
+                if let Some(on_node_click) = ctx.props().on_node_click.as_ref() {
+                    on_node_click.emit(node);
+                } else if ctx.props().node_highlight_on_hover {
+                    self.highlight.toggle_select(node);
+                }
                 false
             }
             Msg::NodeMouseOver(node) => {
@@ -115,18 +122,20 @@ impl Component for NetView {
                 }
             }
             Msg::LinkClick(node1, node2) => {
-                // TODO perhaps configure link click action using a property?
-                log!(format!(
-                    "Click on link between {} and {}.",
-                    self.sim.borrow().name(node1),
-                    self.sim.borrow().name(node2)
-                ));
-                if self.edges.edge_type(node1, node2).unwrap().is_phantom() {
-                    self.sim.borrow_mut().do_now(AddPeer(node1, node2));
-                    self.sim.borrow_mut().do_now(AddPeer(node2, node1));
-                } else {
-                    self.sim.borrow_mut().do_now(RemovePeer(node1, node2));
-                    self.sim.borrow_mut().do_now(RemovePeer(node2, node1));
+                if ctx.props().toggle_edges_on_click {
+                    // TODO perhaps configure link click action using a property?
+                    log!(format!(
+                        "Click on link between {} and {}.",
+                        self.sim.borrow().name(node1),
+                        self.sim.borrow().name(node2)
+                    ));
+                    if self.edges.edge_type(node1, node2).unwrap().is_phantom() {
+                        self.sim.borrow_mut().do_now(AddPeer(node1, node2));
+                        self.sim.borrow_mut().do_now(AddPeer(node2, node1));
+                    } else {
+                        self.sim.borrow_mut().do_now(RemovePeer(node1, node2));
+                        self.sim.borrow_mut().do_now(RemovePeer(node2, node1));
+                    }
                 }
                 false
             }
@@ -156,7 +165,10 @@ impl NetView {
                                     self.highlight
                                         .is(node)
                                         .then_some(ctx.props().highlight_class.clone()),
-                                    "is-clickable",
+                                        (
+                                            ctx.props().on_node_click.is_some() ||
+                                            ctx.props().node_highlight_on_hover
+                                        ).then_some("is-clickable"),
                                 )
                             }
                             cx={ pos.x.to_string() }
@@ -185,16 +197,18 @@ impl NetView {
                             edge_endpoints.right()
                         )) }
                     >
-                        <line
-                            class={ classes!("phantom-link", "is-clickable") }
-                            x1={ line.start.x.to_string() }
-                            y1={ line.start.y.to_string() }
-                            x2={ line.end.x.to_string() }
-                            y2={ line.end.y.to_string() }
-                            stroke="gray"
-                            stroke-opacity="0.3"
-                            stroke-width=8
-                        />
+                        if ctx.props().toggle_edges_on_click {
+                            <line
+                                class={ classes!("phantom-link", "is-clickable") }
+                                x1={ line.start.x.to_string() }
+                                y1={ line.start.y.to_string() }
+                                x2={ line.end.x.to_string() }
+                                y2={ line.end.y.to_string() }
+                                stroke="gray"
+                                stroke-opacity="0.3"
+                                stroke-width=8
+                            />
+                        }
                         if edge_type != EdgeType::Phantom {
                             if edge_type == EdgeType::Undirected {
                                 <line
@@ -203,7 +217,11 @@ impl NetView {
                                     x2={ line.end.x.to_string() }
                                     y2={ line.end.y.to_string() }
                                     stroke="gray"
-                                    class={ "is-clickable" }
+                                    class={
+                                        classes!(
+                                            ctx.props().toggle_edges_on_click.then_some("is-clickable")
+                                        )
+                                    }
                                 />
                             } else {
                                 // TODO: https://developer.mozilla.org/en-US/docs/Web/SVG/Element/marker
@@ -214,7 +232,11 @@ impl NetView {
                                     y2={ line.end.y.to_string() }
                                     stroke="lightgray"
                                     stroke-dasharray="8,8"
-                                    class={ "is-clickable" }
+                                    class={
+                                        classes!(
+                                            ctx.props().toggle_edges_on_click.then_some("is-clickable")
+                                        )
+                                    }
                                 />
                             }
                         }

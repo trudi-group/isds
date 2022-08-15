@@ -1,3 +1,5 @@
+use rand::{rngs::SmallRng, RngCore, SeedableRng};
+
 #[derive(Debug, Clone)]
 pub struct PseudorandomColors {
     full_palette: Vec<String>,
@@ -46,10 +48,9 @@ impl PseudorandomColors {
     }
 }
 
+// TODO refactor and check / improve performance
 fn pseudorandomize(number: u32) -> u32 {
-    // inspired by legion's `U64Hasher`
-    let big_prime = 2u32.pow(31) - 1; // eighth Mersenne prime, largest prime in `u32`
-    big_prime.wrapping_mul(number)
+    SmallRng::seed_from_u64(number as u64).next_u32()
 }
 
 #[cfg(test)]

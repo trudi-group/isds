@@ -114,6 +114,10 @@ impl Simulation {
         self.world
             .spawn(random_node(&self.underlay_config, &mut self.rng))
     }
+    pub fn spawn_random_node_at_position(&mut self, x: f32, y: f32) -> Entity {
+        self.world
+            .spawn(random_node_at_position(x, y, &mut self.rng))
+    }
     pub fn despawn_most_crowded_node(&mut self) -> Result<(), String> {
         if let Some(node) = self.most_crowded_node() {
             self.world.despawn(node).unwrap();
@@ -241,14 +245,20 @@ fn random_node(
     underlay_config: &UnderlayConfig,
     rng: &mut impl Rng,
 ) -> (UnderlayNodeName, UnderlayPosition) {
-    let name = format!("n{:#04}", rng.gen_range(0..10_000));
-    (
-        UnderlayNodeName(name),
-        UnderlayPosition {
-            x: rng.gen_range(0f32..underlay_config.width),
-            y: rng.gen_range(0f32..underlay_config.height),
-        },
+    random_node_at_position(
+        rng.gen_range(0f32..underlay_config.width),
+        rng.gen_range(0f32..underlay_config.height),
+        rng,
     )
+}
+
+fn random_node_at_position(
+    x: f32,
+    y: f32,
+    rng: &mut impl Rng,
+) -> (UnderlayNodeName, UnderlayPosition) {
+    let name = format!("n{:#04}", rng.gen_range(0..10_000));
+    (UnderlayNodeName(name), UnderlayPosition { x, y })
 }
 
 #[cfg(test)]

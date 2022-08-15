@@ -34,7 +34,7 @@ pub fn hashes() -> Html {
                         means that we can reject and discard them,
                         such that our internal state will never be "wrong"...
                         Unless of course there is a problem on the
-                        [consensus](todo) or [network](network) layers.
+                        [consensus](consensus) or [network](network) layers.
                         "#
                     }
                 }

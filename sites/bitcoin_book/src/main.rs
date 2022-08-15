@@ -24,6 +24,10 @@ enum Route {
     Blockchain,
     #[at("/blockchain/hashes")]
     BlockchainHashes,
+    #[at("/consensus")]
+    Consensus,
+    #[at("/consensus/pow")]
+    ConsensusPow,
     #[at("/network")]
     Network,
     #[at("/network/standalone")]
@@ -43,6 +47,8 @@ impl Route {
             Route::Layers => html! { <pages::Layers /> },
             Route::Blockchain => html! { <pages::Blockchain /> },
             Route::BlockchainHashes => html! { <pages::blockchain::Hashes /> },
+            Route::Consensus => html! { <pages::Consensus /> },
+            Route::ConsensusPow => html! { <pages::consensus::Pow /> },
             Route::Network => html! { <pages::Network /> },
             Route::NetworkStandalone => html! { <pages::network::Standalone /> },
             Route::Beyond => html! { <pages::Beyond /> },
@@ -63,6 +69,8 @@ impl Route {
             Route::Layers => "Layers",
             Route::Blockchain => "Blockchain",
             Route::BlockchainHashes => "Hashes",
+            Route::Consensus => "Consensus",
+            Route::ConsensusPow => "Proof of Work (PoW)",
             Route::Network => "Network",
             Route::NetworkStandalone => "Standalone",
             Route::Beyond => "Beyond",
@@ -73,6 +81,8 @@ impl Route {
     fn parent(&self) -> Option<Self> {
         match self {
             Route::BlockchainHashes => Some(Route::Blockchain),
+            Route::ConsensusPow => Some(Route::Consensus),
+            Route::NetworkStandalone => Some(Route::Network),
             Route::Layers => None,
             _ => Some(Route::Layers),
         }
