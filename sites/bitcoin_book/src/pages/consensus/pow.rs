@@ -1,4 +1,5 @@
 use super::*;
+pub use std::error::Error;
 
 #[function_component(Pow)]
 pub fn pow() -> Html {
@@ -70,7 +71,8 @@ pub fn pow() -> Html {
                         But enough theory. Why don't you try it yourself?
                         The example below is similar to the one above.
                         But now you only control one of the nodes and you are only allowed to publish a block if you
-                        have solved the puzzle for a mere 8 zeroes...
+                        have solved the puzzle for a mere 8 zeroes.
+                        Oh and by the way the node on the right is also puzzle-solving...
                         "#
                     }
                 }
@@ -118,9 +120,8 @@ fn no_pow_example() -> Html {
     let on_button = |node| {
         let sim = sim.clone();
         Callback::from(move |_| {
-            random_transaction(&mut sim.borrow_mut(), node);
             sim.borrow_mut()
-                .do_now(isds::ForSpecific(node, isds::nakamoto_consensus::MineBlock));
+                .do_now(MineBlockWithOneRandomTransaction(node))
         })
     };
 
@@ -133,7 +134,9 @@ fn no_pow_example() -> Html {
                             <div class="box">
                                 <isds::BlockchainView
                                     viewing_node={ Some(node) }
-                                    max_visible_blocks={ 3 }
+                                    max_visible_blocks={ 4 }
+                                    show_unconfirmed_txes={ false }
+                                    highlight_class={ "has-fill-info" }
                                 />
                                 <div class="has-text-centered p-5">
                                     <button
@@ -165,6 +168,8 @@ fn no_pow_example() -> Html {
                     <div class="box">
                         <isds::BlockchainView
                             viewing_node={ Some(middle_node) }
+                            show_unconfirmed_txes={ false }
+                            highlight_class={ "has-fill-info" }
                         />
                     </div>
                 </div>
@@ -173,55 +178,60 @@ fn no_pow_example() -> Html {
     }
 }
 
-#[function_component(PowExample)]
-fn pow_example() -> Html {
-    let mut sim = isds::Simulation::new_with_underlay_dimensions(200., 50.);
-    sim.add_event_handler(isds::InvokeProtocolForAllNodes(
-        isds::nakamoto_consensus::NakamotoConsensus::new(),
-    ));
+struct PowExample {
+    sim: isds::SharedSimulation,
+    left_node: isds::Entity,
+    middle_node: isds::Entity,
+    left_node_block_data: String,
+}
+impl Component for PowExample {
+    type Message = ();
+    type Properties = ();
 
-    let left_node = sim.spawn_random_node_at_position(0., 0.);
-    let right_node = sim.spawn_random_node_at_position(200., 0.);
-    let middle_node = sim.spawn_random_node_at_position(100., 50.);
-    sim.add_peer(left_node, middle_node);
-    sim.add_peer(right_node, middle_node);
+    fn create(_: &Context<Self>) -> Self {
+        let mut sim = isds::Simulation::new_with_underlay_dimensions(200., 50.);
+        sim.add_event_handler(isds::InvokeProtocolForAllNodes(
+            isds::nakamoto_consensus::NakamotoConsensus::new(),
+        ));
 
-    sim.do_now(isds::AtRandomIntervals::new(
-        isds::ForSpecific(right_node, isds::nakamoto_consensus::MineBlock),
-        isds::SimSeconds::from(10.),
-    ));
+        let left_node = sim.spawn_random_node_at_position(0., 0.);
+        let right_node = sim.spawn_random_node_at_position(200., 0.);
+        let middle_node = sim.spawn_random_node_at_position(100., 50.);
+        sim.add_peer(left_node, middle_node);
+        sim.add_peer(right_node, middle_node);
 
-    // little hack to make sure that middle_node is initialized
-    sim.add_peer(middle_node, left_node);
-    sim.remove_peer(middle_node, left_node);
+        sim.do_now(isds::AtRandomIntervals::new(
+            MineBlockWithOneRandomTransaction(right_node),
+            isds::SimSeconds::from(10.),
+        ));
 
-    let sim = sim.into_shared();
+        // little hack to make sure that middle_node is initialized
+        sim.add_peer(middle_node, left_node);
+        sim.remove_peer(middle_node, left_node);
 
-    let block_data = use_state(random_block_data);
+        let sim = sim.into_shared();
 
-    let on_button = {
-        let sim = sim.clone();
-        let block_data = block_data.clone();
-        Callback::from(move |_| {
-            random_transaction(&mut sim.borrow_mut(), left_node);
-            sim.borrow_mut().do_now(isds::ForSpecific(
-                left_node,
-                isds::nakamoto_consensus::MineBlock,
-            ));
-            block_data.set(random_block_data());
-        })
-    };
+        let left_node_block_data = random_block_data();
 
-    html! {
-        <isds::Isds { sim }>
-            <div class="columns">
-                <div class="column">
-                    <div class="is-tight">
+        Self {
+            sim,
+            left_node,
+            middle_node,
+            left_node_block_data,
+        }
+    }
+
+    fn view(&self, ctx: &Context<Self>) -> Html {
+        html! {
+            <isds::Isds sim={ self.sim.clone() } >
+                <div class="columns">
+                    <div class="column">
                         <isds::HashBox
-                            seed={ (*block_data).clone() }
+                            existing_data={ self.left_node_block_data.clone() }
                             show_hex={ false }
                             show_only_last_32_bits={ true }
-                            zeroes_target={ 8 }
+                            trailing_zero_bits_target={ 8 }
+                            highlight_trailing_zero_bits={ true }
                             block_on_reached_target={ true }
                         >
                             <div class="has-text-centered p-5">
@@ -230,45 +240,73 @@ fn pow_example() -> Html {
                                 </div>
                                 <button
                                     class="button"
-                                    onclick={ on_button }
+                                    onclick={ ctx.link().callback(move |_| ()) }
                                 >
                                     { "Propose block!" }
                                 </button>
                             </div>
                         </isds::HashBox>
                     </div>
-                </div>
-                <div class="column">
-                    <div class="box">
-                        <isds::BlockchainView
-                            viewing_node={ Some(left_node) }
-                            max_visible_blocks={ 3 }
-                        />
+                    <div class="column">
+                        <div class="box">
+                            <isds::BlockchainView
+                                viewing_node={ Some(self.left_node) }
+                                max_visible_blocks={ 4 }
+                                show_unconfirmed_txes={ false }
+                                highlight_class={ "has-fill-info" }
+                            />
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="columns is-centered">
-                <div class="column is-half-desktop">
-                    <div class="box">
-                        <isds::NetView
-                            toggle_edges_on_click={ false }
-                            node_highlight_on_hover={ true }
-                            highlight_class={ "has-fill-info" }
-                            buffer_space=25.
-                        />
+                <div class="columns is-centered">
+                    <div class="column is-half-desktop">
+                        <div class="box">
+                            <isds::NetView
+                                toggle_edges_on_click={ false }
+                                node_highlight_on_hover={ true }
+                                highlight_class={ "has-fill-info" }
+                                buffer_space=25.
+                            />
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="columns is-centered">
-                <div class="column is-two-thirds-desktop">
-                    <div class="box">
-                        <isds::BlockchainView
-                            viewing_node={ Some(middle_node) }
-                        />
+                <div class="columns is-centered">
+                    <div class="column is-two-thirds-desktop">
+                        <div class="box">
+                            <isds::BlockchainView
+                                viewing_node={ Some(self.middle_node) }
+                                show_unconfirmed_txes={ false }
+                                highlight_class={ "has-fill-info" }
+                            />
+                        </div>
                     </div>
                 </div>
-            </div>
-        </isds::Isds>
+            </isds::Isds>
+        }
+    }
+
+    fn update(&mut self, _: &Context<Self>, _: Self::Message) -> bool {
+        // there is only one message type...
+
+        self.sim
+            .borrow_mut()
+            .do_now(MineBlockWithOneRandomTransaction(self.left_node));
+        self.left_node_block_data = random_block_data();
+
+        true
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MineBlockWithOneRandomTransaction(pub isds::Entity);
+impl isds::Command for MineBlockWithOneRandomTransaction {
+    fn execute(&self, sim: &mut isds::Simulation) -> Result<(), Box<dyn Error>> {
+        random_transaction(sim, self.0);
+        sim.do_now(isds::ForSpecific(
+            self.0,
+            isds::nakamoto_consensus::MineBlock,
+        ));
+        Ok(())
     }
 }
 

@@ -18,10 +18,12 @@ pub enum Msg {
 
 #[derive(Properties, PartialEq)]
 pub struct Props {
-    #[prop_or(5)]
-    pub max_visible_blocks: usize,
     #[prop_or_default]
     pub viewing_node: Option<Entity>,
+    #[prop_or(5)]
+    pub max_visible_blocks: usize,
+    #[prop_or(true)]
+    pub show_unconfirmed_txes: bool,
 
     #[prop_or_default()]
     pub highlight_class: Classes,
@@ -70,27 +72,34 @@ impl Component for BlockchainView {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let Props {
+        let &Props {
             viewing_node,
+            max_visible_blocks,
+            show_unconfirmed_txes,
             inter_block_space,
             block_size,
-            max_visible_blocks,
             stroke_width,
             ..
         } = ctx.props();
 
         let sim = self.sim.borrow();
-        let state = get_node_state(*viewing_node, &sim);
+        let state = get_node_state(viewing_node, &sim);
+
+        let n_slots = if show_unconfirmed_txes {
+            max_visible_blocks + 1
+        } else {
+            max_visible_blocks
+        };
 
         html! {
             <div class="is-unselectable">
                 { "The longest chain, as seen by node" }
-                <EntityName entity={ *viewing_node } class="ml-2 is-family-code is-underlined" />
+                <EntityName entity={ viewing_node } class="ml-2 is-family-code is-underlined" />
                 <svg
                    viewBox={ format!("{} {} {} {}",
                        -inter_block_space,
                        -0.5 * inter_block_space,
-                       ((max_visible_blocks + 1) as f32) * (block_size + inter_block_space) + inter_block_space,
+                       (n_slots as f32) * (block_size + inter_block_space) + inter_block_space,
                        block_size + 0.5 * inter_block_space + stroke_width,
                     ) }
                 >
@@ -132,17 +141,21 @@ impl BlockchainView {
         sim: &Simulation,
         ctx: &Context<Self>,
     ) -> Html {
-        let Props {
-            max_visible_blocks, ..
+        let &Props {
+            max_visible_blocks,
+            show_unconfirmed_txes,
+            ..
         } = ctx.props();
 
-        let blocks = last_blocks_in_longest_chain(state, *max_visible_blocks, sim);
+        let blocks = last_blocks_in_longest_chain(state, max_visible_blocks, sim);
         let n_blocks = blocks.len();
 
         html! {
             <>
                 { self.view_blocks(blocks, ctx) }
-                { self.view_unconfirmed_transactions(n_blocks, state, sim, ctx) }
+                if show_unconfirmed_txes {
+                    { self.view_unconfirmed_transactions(n_blocks, state, sim, ctx) }
+                }
             </>
         }
     }

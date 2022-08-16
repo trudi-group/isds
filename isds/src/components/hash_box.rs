@@ -1,4 +1,4 @@
-use yew::prelude::*;
+use super::*;
 
 use web_sys::HtmlInputElement;
 
@@ -16,16 +16,18 @@ pub enum Msg {
 #[derive(Properties, PartialEq)]
 pub struct Props {
     #[prop_or_default]
-    pub seed: Option<String>,
+    pub existing_data: Option<String>,
     #[prop_or(false)]
     pub show_only_last_32_bits: bool,
     #[prop_or(true)]
     pub show_hex: bool,
     /// hides children while target is not reached
     #[prop_or(0)]
-    pub zeroes_target: usize,
+    pub trailing_zero_bits_target: usize,
     #[prop_or(false)]
     pub block_on_reached_target: bool,
+    #[prop_or(false)]
+    pub highlight_trailing_zero_bits: bool,
     #[prop_or_default]
     pub children: Children,
 }
@@ -41,32 +43,38 @@ impl Component for HashBox {
             block_on_reached_target,
             show_hex,
             show_only_last_32_bits,
-            zeroes_target,
+            trailing_zero_bits_target,
+            highlight_trailing_zero_bits,
             ..
         } = ctx.props();
-        let seed = ctx.props().seed.as_ref();
+        let existing_data = ctx.props().existing_data.as_ref();
 
         let user_input = self
             .input_ref
             .cast::<HtmlInputElement>()
             .map(|ie| ie.value())
             .unwrap_or_default();
-        let input_value = if let Some(seed) = seed {
-            format!("{seed}\n{user_input}")
+        let input_value = if let Some(existing_data) = existing_data {
+            format!("{existing_data}\n{user_input}")
         } else {
             user_input
         };
         let hash_value = sha256(&input_value);
 
         let first_shown_byte = if show_only_last_32_bits { 28 } else { 0 };
-        let target_reached = trailing_zeroes(hash_value) >= zeroes_target;
+        let trailing_zero_bits = trailing_zero_bits(hash_value);
+        let target_reached = trailing_zero_bits >= trailing_zero_bits_target;
 
         html! {
             <div class="box">
-                if let Some(seed) = seed {
+                if let Some(existing_data) = existing_data {
                     <div class="field">
                         <label class="label">{"Existing data:"}</label>
-                        <input class="input is-size-7 is-family-code" readonly=true value={ seed.clone() } />
+                        <input
+                            class="input is-size-7 is-family-code"
+                            readonly=true
+                            value={ existing_data.clone() }
+                        />
                     </div>
                 }
                 <div class="field">
@@ -81,14 +89,18 @@ impl Component for HashBox {
                 <div class="field">
                     <label class="label">
                         {
-                            if seed.is_some() {
+                            if existing_data.is_some() {
                                 "The resulting SHA256 hash, as a hex string:"
                             } else {
                                 "The SHA256 hash of what you just typed, as a hex string:"
                             }
                         }
                     </label>
-                    <input class="input is-size-7 is-family-code" readonly=true value={format!("{:x}", hash_value)} />
+                    <input
+                        class="input is-size-7 is-family-code"
+                        readonly=true
+                        value={format!("{:x}", hash_value)}
+                    />
                 </div>
                 <div class="field">
                     <label class="label">
@@ -113,9 +125,18 @@ impl Component for HashBox {
                                     html!{
                                         <tr>
                                             if show_hex {
-                                                <td>{format!("{:02x} {:02x} {:02x} {:02x}", hash_value[i], hash_value[i+1], hash_value[i+2], hash_value[i+3])}</td>
+                                                <td>
+                                                    { view_hex(hash_value, i) }
+                                                </td>
                                             }
-                                            <td>{format!("{:08b} {:08b} {:08b} {:08b}", hash_value[i], hash_value[i+1], hash_value[i+2], hash_value[i+3])}</td>
+                                            <td>
+                                                {
+                                                    view_bits(
+                                                        hash_value,
+                                                        i,
+                                                        highlight_trailing_zero_bits)
+                                                }
+                                            </td>
                                         </tr>
                                    }
                                 }).collect::<Vec<Html>>()
@@ -137,6 +158,67 @@ impl Component for HashBox {
     fn update(&mut self, _: &Context<Self>, _: Self::Message) -> bool {
         true
     }
+    fn changed(&mut self, _: &Context<Self>) -> bool {
+        if let Some(el) = self.input_ref.cast::<HtmlInputElement>() {
+            el.set_value("")
+        }
+        true
+    }
+}
+
+fn view_hex(hash: GenericArray<u8, U32>, i: usize) -> Html {
+    html! {
+        {
+            format!("{:02x} {:02x} {:02x} {:02x}", hash[i], hash[i+1], hash[i+2], hash[i+3])
+        }
+    }
+}
+
+fn view_bits(hash: GenericArray<u8, U32>, i: usize, highlight_trailing_zero_bits: bool) -> Html {
+    let trailing_zero_bits = trailing_zero_bits(hash);
+    let first_trailing_zero_bit = 256 - trailing_zero_bits;
+    html! {
+        if highlight_trailing_zero_bits && (i + 4) * 8 > first_trailing_zero_bit {
+            {
+                // whole non-highlighted bytes
+                (i..i+4).take_while(|j| (j + 1) * 8 < first_trailing_zero_bit)
+                    .map(|j| format!("{:08b} ", hash[j])).collect::<Html>()
+            }
+            if trailing_zero_bits > 0 {
+                if trailing_zero_bits % 8 > 0 {
+                    // the partially-highlighted bytes
+                    {
+                        format!("{:08b}", hash[first_trailing_zero_bit / 8])
+                            .get(..8-(trailing_zero_bits % 8))
+                            .unwrap()
+                    }
+                    <span class="has-text-weight-bold is-underlined">
+                    {
+                        ("0").repeat(trailing_zero_bits % 8)
+                    }
+                    </span>
+                    { " " }
+                } else {
+                    // the first byte with trailing zeros is an all-zero byte
+                    <span class="has-text-weight-bold is-underlined">
+                    { format!("{:08b}", hash[first_trailing_zero_bit / 8]) }
+                    </span>
+                    { " " }
+                }
+                {
+                    // the remaining all-zero bytes
+                    (i..i+4).skip_while(|j| j * 8 < first_trailing_zero_bit)
+                        .map(|j| html! {
+                            <span class="has-text-weight-bold is-underlined">
+                            { format!("{:08b} ", hash[j]) }
+                            </span>
+                        }).collect::<Html>()
+                }
+            }
+        } else {
+            {format!("{:08b} {:08b} {:08b} {:08b}", hash[i], hash[i+1], hash[i+2], hash[i+3])}
+        }
+    }
 }
 
 fn sha256(input: &str) -> GenericArray<u8, U32> {
@@ -145,33 +227,19 @@ fn sha256(input: &str) -> GenericArray<u8, U32> {
     hasher.finalize()
 }
 
-fn trailing_zeroes(hash: GenericArray<u8, U32>) -> usize {
-    hash.iter().rev().take_while(|&&byte| byte == 0).count() * 8
+fn trailing_zero_bits(hash: GenericArray<u8, U32>) -> usize {
+    hash.iter()
+        .rev()
+        .copied()
+        .take_while(|&byte| byte == 0)
+        .count()
+        * 8
         + hash
             .iter()
             .rev()
-            .skip_while(|&&byte| byte == 0)
-            .map(|&byte| {
-                if byte == 0 {
-                    8
-                } else if byte % 128 == 0 {
-                    7
-                } else if byte % 64 == 0 {
-                    6
-                } else if byte % 32 == 0 {
-                    5
-                } else if byte % 16 == 0 {
-                    4
-                } else if byte % 8 == 0 {
-                    3
-                } else if byte % 4 == 0 {
-                    2
-                } else if byte % 2 == 0 {
-                    1
-                } else {
-                    0
-                }
-            })
+            .copied()
+            .skip_while(|&byte| byte == 0)
+            .map(|byte| byte.trailing_zeros() as usize)
             .next()
             .unwrap_or_default()
 }
@@ -196,14 +264,14 @@ mod wtests {
 
     #[wasm_bindgen_test]
     fn trailing_zeroes_counted_correctly_with_4_zeroes() {
-        let actual = trailing_zeroes(sha256("abcdefghij"));
+        let actual = trailing_zero_bits(sha256("abcdefghij"));
         let expected = 4;
         assert_eq!(expected, actual);
     }
 
     #[wasm_bindgen_test]
     fn trailing_zeroes_counted_correctly_with_9_zeroes() {
-        let actual = trailing_zeroes(sha256(
+        let actual = trailing_zero_bits(sha256(
             "111111111111111111111111111111111111111111111111111111111111111111111111111111",
         ));
         let expected = 9;
