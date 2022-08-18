@@ -58,7 +58,7 @@ impl Component for Layers {
                 <header class="section"> // custom header as this is the "front page"
                     <div class="container">
                         <h1 class="title">{ "Layers of Bitcoin*" }</h1>
-                        <h2 class="subtitle">{ "* and \"blockchain\" more generally" }</h2>
+                        <h2 class="subtitle">{ "* and blockchain-based systems more generally" }</h2>
                         { include_markdown_content!("intro.md") }
                     </div>
                 </header>
@@ -67,6 +67,9 @@ impl Component for Layers {
                     { self.view_blockchain_layer() }
                     { self.view_consensus_layer() }
                     { self.view_network_layer() }
+                    <div class="block p-5">
+                        { include_markdown_content!("outro.md") }
+                    </div>
                 </Main>
                 <Footer />
             </isds::Isds>

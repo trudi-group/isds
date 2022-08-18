@@ -12,7 +12,7 @@ mod user_model;
 use user_model::{random_transaction, random_transaction_from_random_node};
 
 mod page_components;
-use page_components::{Footer, Header, Main, StandardPage};
+use page_components::{Footer, Header, Main, NavBar, StandardPage};
 
 mod pages;
 
