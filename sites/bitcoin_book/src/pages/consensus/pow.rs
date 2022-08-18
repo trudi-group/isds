@@ -15,18 +15,18 @@ pub fn pow() -> Html {
                         propose new blocks.
                         No participant needs to register anywhere or ask for permission.
                         Between the lines, this means that we don't really know who is
-                        responsible for the messages that get sent in the network.
-                        This also implies that it's hard to do something like *voting*.
+                        responsible for the messages that fly through the network.
+                        It also means that it's hard to do something like *voting*.
                         We have a problem if we want to decide democratically what should be the correct next block,
                         for example.
                         There is no way to enforce that each participant gets one vote,
                         or even a limited number of votes.
 
                         In the example below, the top nodes are competitors,
-                        each tries to convince the third node that *its* chain is the right one.
+                        each tries to convince the third node that *its* chain is the correct one.
                         The example uses the *longest chain rule* -
-                        the bottom node will assume that the longest chain it knows is the right one.
-                        However, creating blocks is really easy...
+                        the bottom node will assume that the longest chain it knows is the correct one.
+                        However, creating new blocks is really easy in this example...
                         Try it!
                         Then try confusing the bottom node!
                         "#
@@ -41,17 +41,28 @@ pub fn pow() -> Html {
             <p class="block">
                 {
                     indoc_markdown_content! { r#"
+                        As you may have noticed, it's easy to arrive in a situation where honest nodes
+                        have to continuously revise their opinion about what the "true" history is
+                        (the [blockchain](blockchain) is basically a logbook).
+                        This is not great - imagine the `coin` balance in your wallet fluctuating all the time
+                        because the system can't make up its mind about what happened.
+
                         This is where Proof-of-Work (PoW) comes in.
-                        PoW means that a node needs to prove that she put
-                        hard work into that last block.
+                        PoW means that a node needs to prove that it worked really hard on that new block.
+                        Only then is it allowed to add that block to the chain.
                         The underlying assumption here is that the ability to do work is more or
                         less fairly distributed.
 
                         What is work?
                         Well, unfortunately it can't be anything that is intrinsically valuable...
-                        So essentially, work in the context of Bitcoin's PoW is *solving puzzles*.
+                        In the context of Bitcoin's PoW, *work* is essentially: *solving puzzles*.
 
-                        What kind of puzzles?
+                        (This puzzle-solving is also known as *mining*.
+                        Nodes get to create new `coins` in each block they create,
+                        i.e., for each puzzle they solve.
+                        They are *mining* these `coins`...)
+
+                        But what kind of puzzles are we talking about?
                         Depending on how you explored this website, you might have already come across our page
                         about [cryptographic hash functions](blockchain/hash).
                         What we didn't tell you there is that they are not only used for securing the integrity of the blockchain -
@@ -68,11 +79,14 @@ pub fn pow() -> Html {
                         Why?
                         Because the only way to solve this puzzle is to try out many, many nonces...
 
-                        But enough theory. Why don't you try it yourself?
+                        Enough theory. Why don't you try it yourself?
                         The example below is similar to the one above.
                         But now you only control one of the nodes and you are only allowed to publish a block if you
-                        have solved the puzzle for a mere 8 zeroes.
-                        Oh and by the way the node on the right is also puzzle-solving...
+                        have solved *the puzzle*.
+                        You need to find a value (in the "Type anything" field) that leads to a hash with enough zeroes at the end.
+                        We set the difficulty target to a mere 8 zeroes.
+                        That shouldn't be too hard, right?
+                        Oh and by the way that other node... it is also puzzle-solving...
                         "#
                     }
                 }
@@ -85,10 +99,10 @@ pub fn pow() -> Html {
                     indoc_markdown_content! { r#"
                         And these are the very basics behind Proof-of-Work as it is used by
                         Bitcoin and comparable blockchain systems.
-                        What we didn't cover, among others, is that the difficulty of finding
-                        that next block is adapted over time.
+                        What we didn't cover, among others, is that the difficulty of creating
+                        new blocks is adapted over time.
                         We also didn't discuss the many criticisms that can be voiced against
-                        PoW-based systems, such as their huge energy consumption.
+                        PoW-based systems, for example that their energy consumption is **HUGE**.
                         You might find pointers for further study in the ["Beyond"](beyond) section.
                         "#
                     }
@@ -181,6 +195,7 @@ fn no_pow_example() -> Html {
 struct PowExample {
     sim: isds::SharedSimulation,
     left_node: isds::Entity,
+    right_node: isds::Entity,
     middle_node: isds::Entity,
     left_node_block_data: String,
 }
@@ -216,6 +231,7 @@ impl Component for PowExample {
         Self {
             sim,
             left_node,
+            right_node,
             middle_node,
             left_node_block_data,
         }
@@ -226,28 +242,6 @@ impl Component for PowExample {
             <isds::Isds sim={ self.sim.clone() } >
                 <div class="columns">
                     <div class="column">
-                        <isds::HashBox
-                            existing_data={ self.left_node_block_data.clone() }
-                            show_hex={ false }
-                            show_only_last_32_bits={ true }
-                            trailing_zero_bits_target={ 8 }
-                            highlight_trailing_zero_bits={ true }
-                            block_on_reached_target={ true }
-                        >
-                            <div class="has-text-centered p-5">
-                                <div class="notification is-primary">
-                                    { "Puzzle solved!" }
-                                </div>
-                                <button
-                                    class="button"
-                                    onclick={ ctx.link().callback(move |_| ()) }
-                                >
-                                    { "Propose block!" }
-                                </button>
-                            </div>
-                        </isds::HashBox>
-                    </div>
-                    <div class="column">
                         <div class="box">
                             <isds::BlockchainView
                                 viewing_node={ Some(self.left_node) }
@@ -255,6 +249,49 @@ impl Component for PowExample {
                                 show_unconfirmed_txes={ false }
                                 highlight_class={ "has-fill-info" }
                             />
+                            <div class="pt-5">
+                                <isds::HashBox
+                                    existing_data={ self.left_node_block_data.clone() }
+                                    show_hex={ false }
+                                    show_only_last_32_bits={ true }
+                                    trailing_zero_bits_target={ 8 }
+                                    highlight_trailing_zero_bits={ true }
+                                    block_on_reached_target={ true }
+                                >
+                                    <div class="has-text-centered p-5">
+                                        <div class="notification is-primary">
+                                            { "Puzzle solved!" }
+                                        </div>
+                                        <button
+                                            class="button"
+                                            onclick={ ctx.link().callback(move |_| ()) }
+                                        >
+                                            { "Propose block!" }
+                                        </button>
+                                    </div>
+                                </isds::HashBox>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column">
+                        <div class="box">
+                            <isds::BlockchainView
+                                viewing_node={ Some(self.right_node) }
+                                max_visible_blocks={ 4 }
+                                show_unconfirmed_txes={ false }
+                                highlight_class={ "has-fill-info" }
+                            />
+                            <div class="py-5">
+                                <span class="mr-1">
+                                    { "This node is puzzle-solving (AKA "}
+                                    <span class="is-italic">{ "mining" }</span>
+                                    { ")..." }
+                                </span>
+                                <isds::Spinner
+                                    title={ "Mining in progress..." }
+                                    spins_per_second={ 10. }
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -312,7 +349,7 @@ impl isds::Command for MineBlockWithOneRandomTransaction {
 
 fn random_block_data() -> String {
     format!(
-        "{:x}{:x}{:x}{:x}",
+        "{:02x}{:02x}{:02x}{:02x}",
         rand::random::<u64>(),
         rand::random::<u64>(),
         rand::random::<u64>(),
