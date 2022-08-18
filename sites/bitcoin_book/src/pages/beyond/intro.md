@@ -1,1 +1,7 @@
-A list of user-friendly resources about Bitcoin and beyond, curated by [marfl](https://m.flrn.cc).
+A list of resources for your further study.
+We hand-picked resources that approach topics in an original, playful manner,
+and added a few on top that we just think are very important.
+There are many resources for learning about Bitcoin and blockchain out there,
+but these are some of the ones we like most.
+
+Like everything else on this website, this list might be expanded in the future 😉

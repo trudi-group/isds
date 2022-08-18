@@ -2,9 +2,9 @@
 
 **Video:** [But how does bitcoin actually work?](https://www.youtube.com/watch?v=bBC-nXj3Ng4) (~26 minutes; highly recommended)
 
-**Interactive:** [All Bitcoin private keys is on this website](https://playxo.com/)
-
 #### Deeper into Bitcoin
+
+**Interactive:** [All Bitcoin private keys is on this website](https://playxo.com/)
 
 **Live visualization:** [TxStreet](https://txstreet.com/v/btc) (click "Launch", then "show me around")
 
