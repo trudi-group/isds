@@ -18,6 +18,9 @@ pub use hash_box::HashBox;
 mod net_view;
 pub use net_view::NetView;
 
+mod spinner;
+pub use spinner::Spinner;
+
 mod time_ui;
 pub use time_ui::{TimeControls, TimeDisplay, TimeUi};
 

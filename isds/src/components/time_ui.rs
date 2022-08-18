@@ -98,10 +98,19 @@ pub fn time_display() -> Html {
     let sim = context.sim.borrow();
 
     html! {
-        <div title="Current simulation time and speed">
+        <div title="Simulation time and speed">
             <i class="fas fa-clock"></i>
             <span class="ml-1 is-hidden-mobile">
                 { format!("(s): {:.3}", sim.time.now()) }
+            </span>
+            <span class="ml-1 is-hidden-tablet">
+                <Spinner title={
+                    if sim.time.paused() {
+                        "Simulation paused"
+                    } else {
+                        "Simulation in progress..."
+                    }
+                } />
             </span>
             <span class="ml-1">
                 { format!("({}✕)", sim.time.speed()) }

@@ -140,6 +140,12 @@ impl Layers {
         view_layer(
             html! {
                 <div class="has-text-centered p-5">
+                    <span class="is-size-4 m-5">
+                        <isds::Spinner
+                            title={ "Mining in progress..." }
+                            spins_per_second={ 10. }
+                        />
+                    </span>
                     <button
                         class="button is-large"
                         onclick={ on_button }
