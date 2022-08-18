@@ -56,9 +56,11 @@ pub struct HeaderProps {
 pub fn header(props: &HeaderProps) -> Html {
     html! {
         <header class="section">
-            <NavBar />
-            <h2 class="title">{ &props.title }</h2>
-            { for props.children.iter() }
+            <div class="container">
+                <NavBar />
+                <h2 class="title">{ &props.title }</h2>
+                { for props.children.iter() }
+            </div>
         </header>
     }
 }
@@ -72,7 +74,9 @@ pub struct MainProps {
 pub fn main(props: &MainProps) -> Html {
     html! {
         <main class="section">
-            { for props.children.iter() }
+            <div class="container">
+                { for props.children.iter() }
+            </div>
         </main>
     }
 }

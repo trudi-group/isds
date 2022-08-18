@@ -56,9 +56,11 @@ impl Component for Layers {
         html! {
             <isds::Isds sim={ self.sim.clone() }>
                 <header class="section"> // custom header as this is the "front page"
-                    <h1 class="title">{ "Layers of Bitcoin*" }</h1>
-                    <h2 class="subtitle">{ "* and \"blockchain\" more generally" }</h2>
-                    { include_markdown_content!("intro.md") }
+                    <div class="container">
+                        <h1 class="title">{ "Layers of Bitcoin*" }</h1>
+                        <h2 class="subtitle">{ "* and \"blockchain\" more generally" }</h2>
+                        { include_markdown_content!("intro.md") }
+                    </div>
                 </header>
                 <Main>
                     { self.view_application_layer() }
