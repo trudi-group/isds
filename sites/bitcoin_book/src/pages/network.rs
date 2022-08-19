@@ -3,40 +3,47 @@ use super::*;
 #[function_component(Network)]
 pub fn network() -> Html {
     html! {
-        <StandardPage title="The peer-to-peer network">
-            <p class="block">
-                {
-                    "Some day, this page might have more to tell you about the peer-to-peer
-                     network that underlies Bitcoin and many other blockchain-based systems."
-                }
-
-            </p>
-            <p class="block">
-                {
-                    "Right now, we can only offer you a bigger network to play with.
-                     Try creating some forks!
-                     Clicking on a node causes it to mine a block and clicking on the links between
-                     nodes causes them to disappear."
-                }
-            </p>
-            <div class="block">
-                <Standalone />
-            </div>
-            <p class="block">
+        <>
+            <Header title="The peer-to-peer network">
                 {
                     indoc_markdown_content! { r#"
-                        Pssst.... you can also use your keyboard!
+                        Some day, this page might have more to tell you about the peer-to-peer
+                        networks that underly Bitcoin and many other blockchain-based systems.
 
-                        - `[space]` ⇨ pause/play simulation
-                        - `[←]`/`[→]` ⇨ control simulation speed
-                        - `[m]` ⇨ a random node will "mine" a block
-                        - `[t]` ⇨ a random node will send out a random transaction
-                        - `[s]` ⇨ toggle slowdown on messages
+                        Right now, we can only offer you a bigger network to play with.
+                        As everywhere on this website,
+                        what is simulated here is an approximation of what Bitcoin is doing.
+                        The main principles are the same,
+                        the details vary.
+
+                        Try creating some forks!
+                        Clicking on a node causes it to mine a block and clicking on the links between
+                        nodes causes them to disappear.
                         "#
                     }
                 }
-            </p>
-        </StandardPage>
+            </Header>
+            <Main>
+                <div class="block">
+                    <Standalone />
+                </div>
+                <div class="block">
+                    {
+                        indoc_markdown_content! { r#"
+                            Pssst.... you can also use your keyboard!
+
+                            - `[space]` ⇨ pause/play simulation
+                            - `[←]`/`[→]` ⇨ control simulation speed
+                            - `[m]` ⇨ a random node will "mine" a block
+                            - `[t]` ⇨ a random node will send out a random transaction
+                            - `[s]` ⇨ toggle slowdown on messages
+                            "#
+                        }
+                    }
+                </div>
+            </Main>
+            <Footer />
+        </>
     }
 }
 

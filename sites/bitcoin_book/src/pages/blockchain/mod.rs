@@ -7,15 +7,15 @@ pub use hashes::Hashes;
 pub fn blockchain() -> Html {
     html! {
         <StandardPage title="The (actual) blockchain">
-            <p class="block">
+            <div class="block">
                 { "This page might have more to tell you about blockchain-the-data-structure in the future." }
-            </p>
-            <p class="block">
+            </div>
+            <div class="block">
                 { "Right now, we only discuss: " }
                 <Link<Route> to={Route::BlockchainHashes}>
                     { "What makes the blockchain so immutable?" }
                 </Link<Route>>
-            </p>
+            </div>
         </StandardPage>
     }
 }

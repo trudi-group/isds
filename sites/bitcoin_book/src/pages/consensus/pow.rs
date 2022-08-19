@@ -4,23 +4,31 @@ pub use std::error::Error;
 #[function_component(Pow)]
 pub fn pow() -> Html {
     html! {
-        <StandardPage title="Proof-of-Work (PoW)">
-            <p class="block">
+        <>
+        <Header title="Proof-of-Work (PoW)">
+            {
+                indoc_markdown_content! { r#"
+                    Bitcoin, as well as most other cryptocurrency networks,
+                    is what is called a *permissionless* system.
+                    This means that anyone can become an active part of the network and,
+                    for example,
+                    propose new blocks.
+                    No participant needs to register anywhere or ask for permission.
+                    Between the lines, this means that we don't really know who is
+                    responsible for the messages that fly through the network.
+                    It also means that it's hard to do something like *voting*.
+                    We have a problem if we want to decide democratically what should be the correct next block,
+                    for example.
+                    There is no way to enforce that each participant gets one vote,
+                    or even a limited number of votes.
+                    "#
+                }
+            }
+        </Header>
+        <Main>
+            <div class="block">
                 {
                     indoc_markdown_content! { r#"
-                        Bitcoin, as well as most other cryptocurrency networks,
-                        is what is called a *permissionless* system.
-                        This means that anyone can become an active part of the network and,
-                        for example,
-                        propose new blocks.
-                        No participant needs to register anywhere or ask for permission.
-                        Between the lines, this means that we don't really know who is
-                        responsible for the messages that fly through the network.
-                        It also means that it's hard to do something like *voting*.
-                        We have a problem if we want to decide democratically what should be the correct next block,
-                        for example.
-                        There is no way to enforce that each participant gets one vote,
-                        or even a limited number of votes.
 
                         In the example below, the top nodes are competitors,
                         each tries to convince the third node that *its* chain is the correct one.
@@ -32,13 +40,13 @@ pub fn pow() -> Html {
                         "#
                     }
                 }
-            </p>
+            </div>
 
             <div class="block">
                 <NoPowExample />
             </div>
 
-            <p class="block">
+            <div class="block">
                 {
                     indoc_markdown_content! { r#"
                         As you may have noticed, it's easy to arrive in a situation where honest nodes
@@ -90,11 +98,11 @@ pub fn pow() -> Html {
                         "#
                     }
                 }
-            </p>
+            </div>
             <div class="block">
                 <PowExample />
             </div>
-            <p class="block">
+            <div class="block">
                 {
                     indoc_markdown_content! { r#"
                         And these are the very basics behind Proof-of-Work as it is used by
@@ -107,8 +115,10 @@ pub fn pow() -> Html {
                         "#
                     }
                 }
-            </p>
-        </StandardPage>
+            </div>
+        </Main>
+        <Footer />
+        </>
     }
 }
 

@@ -12,7 +12,7 @@ mod user_model;
 use user_model::{random_transaction, random_transaction_from_random_node};
 
 mod page_components;
-use page_components::{Footer, Header, Main, NavBar, StandardPage};
+use page_components::{Footer, Header, Main, StandardPage};
 
 mod pages;
 
@@ -20,6 +20,8 @@ mod pages;
 enum Route {
     #[at("/")]
     Layers,
+    #[at("/application")]
+    ToDo,
     #[at("/blockchain")]
     Blockchain,
     #[at("/blockchain/hashes")]
@@ -34,8 +36,6 @@ enum Route {
     NetworkStandalone,
     #[at("/beyond")]
     Beyond,
-    #[at("/todo")]
-    ToDo,
     #[not_found]
     #[at("/404")]
     NotFound,

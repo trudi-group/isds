@@ -10,6 +10,7 @@ pub fn beyond() -> Html {
             <Main>
                 { include_markdown_content!("content.md") }
             </Main>
+            <Footer />
         </>
     }
 }

@@ -60,6 +60,18 @@ impl Component for Layers {
                         <h1 class="title">{ "Layers of Bitcoin*" }</h1>
                         <h2 class="subtitle">{ "* and blockchain-based systems more generally" }</h2>
                         { include_markdown_content!("intro.md") }
+                        <div class="notification is-hidden-tablet">
+                            <span>
+                                {
+                                    "This page should also work on smartphones,
+                                    but for the best experience,
+                                    we recommend using a wider screen.
+                                    And perhaps also a mouse..."
+                                }
+                            </span>
+                            <span class="icon"><i class="fas fa-desktop"></i></span>
+                            <span class="icon"><i class="fas fa-mouse"></i></span>
+                        </div>
                     </div>
                 </header>
                 <Main>

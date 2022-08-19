@@ -4,6 +4,8 @@ use super::*;
 pub struct StandardPageProps {
     pub title: String,
     #[prop_or_default]
+    pub footer: bool,
+    #[prop_or_default]
     pub children: Children,
 }
 #[function_component(StandardPage)]
@@ -14,6 +16,9 @@ pub fn standard_page(props: &StandardPageProps) -> Html {
             <Main>
                 { for props.children.iter() }
             </Main>
+            if props.footer {
+                <Footer />
+            }
         </>
     }
 }
