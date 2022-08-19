@@ -12,7 +12,7 @@ mod user_model;
 use user_model::{random_transaction, random_transaction_from_random_node};
 
 mod page_components;
-use page_components::{Footer, Header, Main, StandardPage};
+use page_components::{Footer, Header, Section, SimplePage};
 
 mod pages;
 
@@ -53,14 +53,14 @@ impl Route {
             Route::NetworkStandalone => html! { <pages::network::Standalone /> },
             Route::Beyond => html! { <pages::Beyond /> },
             Route::ToDo => html! {
-                <StandardPage title="TODO">
+                <SimplePage title="TODO">
                     { include_markdown_content!("pages/todo.md") }
-                </StandardPage>
+                </SimplePage>
             },
             Route::NotFound => html! {
-                <StandardPage title="Not Found">
+                <SimplePage title="Not Found">
                     { include_markdown_content!("pages/404.md") }
-                </StandardPage>
+                </SimplePage>
             },
         }
     }

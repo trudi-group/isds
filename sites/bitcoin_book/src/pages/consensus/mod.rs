@@ -3,12 +3,10 @@ use super::*;
 mod pow;
 pub use pow::Pow;
 
-// TODO a bit more text; and as markdown?
-
 #[function_component(Consensus)]
 pub fn consensus() -> Html {
     html! {
-        <StandardPage title="Consensus">
+        <SimplePage title="Consensus">
             <div class="block">
                 { "In the future, this page might have more to tell you about different consensus protocols." }
             </div>
@@ -17,8 +15,8 @@ pub fn consensus() -> Html {
                 <Link<Route> to={Route::ConsensusPow}>
                     { "Proof-of-Work" }
                 </Link<Route>>
-                    { " - a central element behind the Bitcoin network's approach to reaching consensus." }
+                    { " - a central pillar of the Bitcoin's approach to consensus." }
             </div>
-        </StandardPage>
+        </SimplePage>
     }
 }

@@ -6,7 +6,7 @@ pub use hashes::Hashes;
 #[function_component(Blockchain)]
 pub fn blockchain() -> Html {
     html! {
-        <StandardPage title="The (actual) blockchain">
+        <SimplePage title="The (actual) blockchain">
             <div class="block">
                 { "This page might have more to tell you about blockchain-the-data-structure in the future." }
             </div>
@@ -16,6 +16,6 @@ pub fn blockchain() -> Html {
                     { "What makes the blockchain so immutable?" }
                 </Link<Route>>
             </div>
-        </StandardPage>
+        </SimplePage>
     }
 }

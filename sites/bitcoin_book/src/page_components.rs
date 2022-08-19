@@ -1,21 +1,25 @@
 use super::*;
 
 #[derive(Properties, PartialEq)]
-pub struct StandardPageProps {
+pub struct SimplePageProps {
     pub title: String,
     #[prop_or_default]
     pub footer: bool,
     #[prop_or_default]
     pub children: Children,
 }
-#[function_component(StandardPage)]
-pub fn standard_page(props: &StandardPageProps) -> Html {
+/// Page with one section
+#[function_component(SimplePage)]
+pub fn simple_page(props: &SimplePageProps) -> Html {
     html! {
         <>
-            <Header title={ props.title.clone() } />
-            <Main>
-                { for props.children.iter() }
-            </Main>
+            <div class="section">
+                <div class="container">
+                    <NavBar />
+                    <h2 class="title">{ &props.title }</h2>
+                    { for props.children.iter() }
+                </div>
+            </div>
             if props.footer {
                 <Footer />
             }
@@ -71,12 +75,12 @@ pub fn header(props: &HeaderProps) -> Html {
 }
 
 #[derive(Properties, PartialEq)]
-pub struct MainProps {
+pub struct SectionProps {
     #[prop_or_default]
     pub children: Children,
 }
-#[function_component(Main)]
-pub fn main(props: &MainProps) -> Html {
+#[function_component(Section)]
+pub fn main(props: &SectionProps) -> Html {
     html! {
         <main class="section">
             <div class="container">

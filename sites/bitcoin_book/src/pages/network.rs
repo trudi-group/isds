@@ -23,7 +23,7 @@ pub fn network() -> Html {
                     }
                 }
             </Header>
-            <Main>
+            <Section>
                 <div class="block">
                     <Standalone />
                 </div>
@@ -41,7 +41,7 @@ pub fn network() -> Html {
                         }
                     }
                 </div>
-            </Main>
+            </Section>
             <Footer />
         </>
     }

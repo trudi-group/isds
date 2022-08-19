@@ -74,15 +74,16 @@ impl Component for Layers {
                         </div>
                     </div>
                 </header>
-                <Main>
+                <Section>
                     { self.view_application_layer() }
                     { self.view_blockchain_layer() }
                     { self.view_consensus_layer() }
                     { self.view_network_layer() }
-                    <div class="block p-5">
-                        { include_markdown_content!("outro.md") }
-                    </div>
-                </Main>
+                </Section>
+                <Section>
+                    <h2 class="title is-4">{ "...and beyond..." }</h2>
+                    { include_markdown_content!("outro.md") }
+                </Section>
                 <Footer />
             </isds::Isds>
         }

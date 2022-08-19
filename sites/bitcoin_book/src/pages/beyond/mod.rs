@@ -7,9 +7,9 @@ pub fn beyond() -> Html {
             <Header title={ "More places to learn" }>
                 { include_markdown_content!("intro.md") }
             </Header>
-            <Main>
+            <Section>
                 { include_markdown_content!("content.md") }
-            </Main>
+            </Section>
             <Footer />
         </>
     }

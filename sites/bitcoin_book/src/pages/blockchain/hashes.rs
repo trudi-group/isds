@@ -4,7 +4,7 @@ use super::*;
 pub fn hashes() -> Html {
     let (sim, node) = init_simulation();
     html! {
-        <StandardPage title="What makes the blockchain so immutable?" footer=true >
+        <SimplePage title="What makes the blockchain so immutable?" footer=true >
             <div class="block pb-2">
                 { "It's" }
                 <span class="is-size-5 has-text-weight-bold mx-1">
@@ -102,12 +102,12 @@ pub fn hashes() -> Html {
                                 And if some project you like does invent it's own cryptography -
                                 a healthy dose of scepticism won't hurt...
 
-                                \* The original meaning of "crypto" if of course "cryptography". What did you think?
+                                \* The original meaning of "crypto" if of course "cryptography". What did *you* think?
                             "#
                         }
                     }
             </div>
-        </StandardPage>
+        </SimplePage>
     }
 }
 

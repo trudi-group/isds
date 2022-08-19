@@ -21,11 +21,17 @@ pub fn pow() -> Html {
                     for example.
                     There is no way to enforce that each participant gets one vote,
                     or even a limited number of votes.
+
+                    Bitcoin's solution is to tie block creation to *work*.
+                    The underlying assumption is that the ability to do work is more or
+                    less evenly distributed.
+                    But let's take a closer look at the problem first...
                     "#
                 }
             }
         </Header>
-        <Main>
+        <Section>
+            <h3 class="title is-4">{ "Naive example: blocks for free" }</h3>
             <div class="block">
                 {
                     indoc_markdown_content! { r#"
@@ -45,7 +51,6 @@ pub fn pow() -> Html {
             <div class="block">
                 <NoPowExample />
             </div>
-
             <div class="block">
                 {
                     indoc_markdown_content! { r#"
@@ -54,15 +59,22 @@ pub fn pow() -> Html {
                         (the [blockchain](blockchain) is basically a logbook).
                         This is not great - imagine the `coin` balance in your wallet fluctuating all the time
                         because the system can't make up its mind about what happened.
-
+                        "#
+                    }
+                }
+            </div>
+        </Section>
+        <Section>
+            <h3 class="title is-4">{ "We'll have to work then..." }</h3>
+            <div class="block">
+                {
+                    indoc_markdown_content! { r#"
                         This is where Proof-of-Work (PoW) comes in.
                         PoW means that a node needs to prove that it worked really hard on that new block.
                         Only then is it allowed to add that block to the chain.
-                        The underlying assumption here is that the ability to do work is more or
-                        less fairly distributed.
 
                         What is work?
-                        Well, unfortunately it can't be anything that is intrinsically valuable...
+                        Unfortunately it can't be anything that is intrinsically valuable...
                         In the context of Bitcoin's PoW, *work* is essentially: *solving puzzles*.
 
                         (This puzzle-solving is also known as *mining*.
@@ -74,27 +86,31 @@ pub fn pow() -> Html {
                         Depending on how you explored this website, you might have already come across our page
                         about [cryptographic hash functions](blockchain/hash).
                         What we didn't tell you there is that they are not only used for securing the integrity of the blockchain -
-                        they are also used for building the puzzles that nodes use for proving
-                        that they worked hard.
+                        they are also used for building the puzzles that ensure that nodes are working hard.
 
-                        And the puzzle is the following: Given all the data that you want to include in a block,
+                        And the puzzles look like this: Given all the data that you want to include in a block,
                         including the [hash of the previous block](blockchain/hash),
                         find some extra data to append to that block
                         (the so called *nonce*)
-                        so that the hash of the block gets a certain number of zeroes at the end.
+                        so that the hash of the new block gets a certain number of zero bits at the end.
+                        (It's actually a tiny bit more complicated than "number of zero bits at the end",
+                        but it's a good enough approximation.)
                         The number of zeroes describes the *difficulty target* - the more they are,
                         the harder it gets.
                         Why?
                         Because the only way to solve this puzzle is to try out many, many nonces...
+                        Each nonce is like a lottery ticket,
+                        nodes check it by calculating a hash with it,
+                        and if that hash has enough zeroes at the end then the ticket was a winning ticket.
 
                         Enough theory. Why don't you try it yourself?
                         The example below is similar to the one above.
                         But now you only control one of the nodes and you are only allowed to publish a block if you
                         have solved *the puzzle*.
                         You need to find a value (in the "Type anything" field) that leads to a hash with enough zeroes at the end.
-                        We set the difficulty target to a mere 8 zeroes.
+                        We set the difficulty target to a mere 8 zero bits.
                         That shouldn't be too hard, right?
-                        Oh and by the way that other node... it is also puzzle-solving...
+                        Oh and by the way that other node... it's also puzzle-solving...
                         "#
                     }
                 }
@@ -107,7 +123,7 @@ pub fn pow() -> Html {
                     indoc_markdown_content! { r#"
                         And these are the very basics behind Proof-of-Work as it is used by
                         Bitcoin and comparable blockchain systems.
-                        What we didn't cover, among others, is that the difficulty of creating
+                        What we didn't cover, among other things, is that the difficulty of creating
                         new blocks is adapted over time.
                         We also didn't discuss the many criticisms that can be voiced against
                         PoW-based systems, for example that their energy consumption is **HUGE**.
@@ -116,7 +132,7 @@ pub fn pow() -> Html {
                     }
                 }
             </div>
-        </Main>
+        </Section>
         <Footer />
         </>
     }
