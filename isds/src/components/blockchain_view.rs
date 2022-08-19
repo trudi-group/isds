@@ -24,6 +24,8 @@ pub struct Props {
     pub max_visible_blocks: usize,
     #[prop_or(true)]
     pub show_unconfirmed_txes: bool,
+    #[prop_or(true)]
+    pub show_header: bool,
 
     #[prop_or_default()]
     pub highlight_class: Classes,
@@ -76,6 +78,7 @@ impl Component for BlockchainView {
             viewing_node,
             max_visible_blocks,
             show_unconfirmed_txes,
+            show_header,
             inter_block_space,
             block_size,
             stroke_width,
@@ -93,8 +96,10 @@ impl Component for BlockchainView {
 
         html! {
             <div class="is-unselectable">
-                { "The longest chain, as seen by node" }
-                <EntityName entity={ viewing_node } class="ml-2 is-family-code is-underlined" />
+                if show_header {
+                    { "The longest chain, as seen by node" }
+                    <EntityName entity={ viewing_node } class="ml-2 is-family-code is-underlined" />
+                }
                 <svg
                    viewBox={ format!("{} {} {} {}",
                        -inter_block_space,
