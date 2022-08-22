@@ -90,24 +90,24 @@ pub fn pow() -> Html {
 
                         And the puzzles look like this: Given all the data that you want to include in a block,
                         including the [hash of the previous block](blockchain/hashes),
-                        find some extra data to append to that block
+                        find some extra data to add to that block
                         (the so called *nonce*)
-                        so that the hash of the new block gets a certain number of zero bits at the end.
-                        (It's actually a tiny bit more complicated than "number of zero bits at the end",
-                        but it's a good enough approximation.)
-                        The number of zeroes describes the *difficulty target* - the more they are,
+                        so that the hash of the resulting block starts with a certain number of zero bits.
+                        (It's actually a tiny bit more complicated than "starts with a number of zero bits",
+                        but this is a good enough approximation.)
+                        The number of zero bits describes the *difficulty target* - the more they are,
                         the harder it gets.
-                        Why?
-                        Because the only way to solve this puzzle is to try out many, many nonces...
+                        It's basically impossible to guess how many leading zero bits a cryptographic hash will have,
+                        so the only way to solve this puzzle is to try out many, many nonces...
                         Each nonce is like a lottery ticket,
                         nodes check it by calculating a hash with it,
-                        and if that hash has enough zeroes at the end then the ticket was a winning ticket.
+                        and if that hash has enough leading zero bits - then the ticket was a winning ticket!
 
                         Enough theory. Why don't you try it yourself?
                         The example below is similar to the one above.
                         But now you only control one of the nodes and you are only allowed to publish a block if you
                         have solved *the puzzle*.
-                        You need to find a value (in the "Type anything" field) that leads to a hash with enough zeroes at the end.
+                        You need to find a value (in the "Type anything" field) that leads to a hash with enough leading zero bits.
                         We set the difficulty target to a mere 8 zero bits.
                         That shouldn't be too hard, right?
                         Oh and by the way that other node... it's also puzzle-solving...
@@ -279,9 +279,9 @@ impl Component for PowExample {
                                 <isds::HashBox
                                     existing_data={ self.left_node_block_data.clone() }
                                     show_hex={ false }
-                                    show_only_last_32_bits={ true }
-                                    trailing_zero_bits_target={ 8 }
-                                    highlight_trailing_zero_bits={ true }
+                                    show_only_first_32_bits={ true }
+                                    leading_zero_bits_target={ 8 }
+                                    highlight_leading_zero_bits={ true }
                                     block_on_reached_target={ true }
                                 >
                                     <div class="has-text-centered p-5">

@@ -18,16 +18,16 @@ pub struct Props {
     #[prop_or_default]
     pub existing_data: Option<String>,
     #[prop_or(false)]
-    pub show_only_last_32_bits: bool,
+    pub show_only_first_32_bits: bool,
     #[prop_or(true)]
     pub show_hex: bool,
     /// hides children while target is not reached
     #[prop_or(0)]
-    pub trailing_zero_bits_target: usize,
+    pub leading_zero_bits_target: usize,
     #[prop_or(false)]
     pub block_on_reached_target: bool,
     #[prop_or(false)]
-    pub highlight_trailing_zero_bits: bool,
+    pub highlight_leading_zero_bits: bool,
     #[prop_or_default]
     pub children: Children,
 }
@@ -42,9 +42,9 @@ impl Component for HashBox {
         let &Props {
             block_on_reached_target,
             show_hex,
-            show_only_last_32_bits,
-            trailing_zero_bits_target,
-            highlight_trailing_zero_bits,
+            show_only_first_32_bits,
+            leading_zero_bits_target,
+            highlight_leading_zero_bits,
             ..
         } = ctx.props();
         let existing_data = ctx.props().existing_data.as_ref();
@@ -61,9 +61,9 @@ impl Component for HashBox {
         };
         let hash_value = sha256(&input_value);
 
-        let first_shown_byte = if show_only_last_32_bits { 28 } else { 0 };
-        let trailing_zero_bits = trailing_zero_bits(hash_value);
-        let target_reached = trailing_zero_bits >= trailing_zero_bits_target;
+        let last_shown_byte = if show_only_first_32_bits { 3 } else { 31 };
+        let leading_zero_bits = leading_zero_bits(hash_value);
+        let target_reached = leading_zero_bits >= leading_zero_bits_target;
 
         html! {
             <div class="box">
@@ -104,8 +104,8 @@ impl Component for HashBox {
                 </div>
                 <div class="field">
                     <label class="label">
-                        if show_only_last_32_bits {
-                            { "Last 32 bits:" }
+                        if show_only_first_32_bits {
+                            { "First 32 bits:" }
                         } else {
                             { "Expressed as bits (32 bits per line):" }
                         }
@@ -121,7 +121,7 @@ impl Component for HashBox {
                         }
                         <tbody class="is-family-code">
                             {
-                                (first_shown_byte..32).step_by(4).map(|i| {
+                                (0..=last_shown_byte).step_by(4).map(|i| {
                                     html!{
                                         <tr>
                                             if show_hex {
@@ -134,7 +134,7 @@ impl Component for HashBox {
                                                     view_bits(
                                                         hash_value,
                                                         i,
-                                                        highlight_trailing_zero_bits)
+                                                        highlight_leading_zero_bits)
                                                 }
                                             </td>
                                         </tr>
@@ -174,46 +174,44 @@ fn view_hex(hash: GenericArray<u8, U32>, i: usize) -> Html {
     }
 }
 
-fn view_bits(hash: GenericArray<u8, U32>, i: usize, highlight_trailing_zero_bits: bool) -> Html {
-    let trailing_zero_bits = trailing_zero_bits(hash);
-    let first_trailing_zero_bit = 256 - trailing_zero_bits;
+fn view_bits(hash: GenericArray<u8, U32>, i: usize, highlight_leading_zero_bits: bool) -> Html {
+    let leading_zero_bits = leading_zero_bits(hash);
     html! {
-        if highlight_trailing_zero_bits && (i + 4) * 8 > first_trailing_zero_bit {
+        if highlight_leading_zero_bits && i < leading_zero_bits {
             {
-                // whole non-highlighted bytes
-                (i..i+4).take_while(|j| (j + 1) * 8 < first_trailing_zero_bit)
-                    .map(|j| format!("{:08b} ", hash[j])).collect::<Html>()
-            }
-            if trailing_zero_bits > 0 {
-                if trailing_zero_bits % 8 > 0 {
-                    // the partially-highlighted bytes
-                    {
-                        format!("{:08b}", hash[first_trailing_zero_bit / 8])
-                            .get(..8-(trailing_zero_bits % 8))
-                            .unwrap()
-                    }
-                    <span class="has-text-weight-bold is-underlined">
-                    {
-                        ("0").repeat(trailing_zero_bits % 8)
-                    }
-                    </span>
-                    { " " }
-                } else {
-                    // the first byte with trailing zeros is an all-zero byte
-                    <span class="has-text-weight-bold is-underlined">
-                    { format!("{:08b}", hash[first_trailing_zero_bit / 8]) }
-                    </span>
-                    { " " }
-                }
-                {
-                    // the remaining all-zero bytes
-                    (i..i+4).skip_while(|j| j * 8 < first_trailing_zero_bit)
-                        .map(|j| html! {
+                // whole highlighted bytes up to and excluding the last such byte
+                (i..i+4).take_while(|j| (j + 1) * 8 < leading_zero_bits)
+                    .map(|j| html! {
+                        <>
                             <span class="has-text-weight-bold is-underlined">
-                            { format!("{:08b} ", hash[j]) }
+                            { format!("{:08b}", hash[j]) }
                             </span>
-                        }).collect::<Html>()
+                            { " " }
+                        </>
+                    }).collect::<Html>()
+            }
+            if leading_zero_bits > 0 && leading_zero_bits % 8 > 0 {
+                // the partially-highlighted byte
+                <span class="has-text-weight-bold is-underlined">
+                {
+                    ("0").repeat(leading_zero_bits % 8)
                 }
+                </span>
+                {
+                    format!("{:b}", hash[leading_zero_bits / 8])
+                }
+                { " " }
+            } else {
+                // the last byte with leading zeros is an all-zero byte
+                <span class="has-text-weight-bold is-underlined">
+                    { format!("{:08b}", hash[leading_zero_bits / 8 - 1]) }
+                </span>
+                { " " }
+            }
+            {
+                // the remaining bytes
+                (i..i+4).skip_while(|j| j * 8 < leading_zero_bits)
+                    .map(|j| format!("{:08b} ", hash[j])).collect::<Html>()
             }
         } else {
             {format!("{:08b} {:08b} {:08b} {:08b}", hash[i], hash[i+1], hash[i+2], hash[i+3])}
@@ -227,19 +225,13 @@ fn sha256(input: &str) -> GenericArray<u8, U32> {
     hasher.finalize()
 }
 
-fn trailing_zero_bits(hash: GenericArray<u8, U32>) -> usize {
-    hash.iter()
-        .rev()
-        .copied()
-        .take_while(|&byte| byte == 0)
-        .count()
-        * 8
+fn leading_zero_bits(hash: GenericArray<u8, U32>) -> usize {
+    hash.iter().copied().take_while(|&byte| byte == 0).count() * 8
         + hash
             .iter()
-            .rev()
             .copied()
             .skip_while(|&byte| byte == 0)
-            .map(|byte| byte.trailing_zeros() as usize)
+            .map(|byte| byte.leading_zeros() as usize)
             .next()
             .unwrap_or_default()
 }
@@ -251,6 +243,7 @@ fn trailing_zero_bits(hash: GenericArray<u8, U32>) -> usize {
 #[cfg(test)]
 mod wtests {
     use super::*;
+    use generic_array::arr;
     use wasm_bindgen_test::*;
 
     wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
@@ -263,17 +256,21 @@ mod wtests {
     }
 
     #[wasm_bindgen_test]
-    fn trailing_zeroes_counted_correctly_with_4_zeroes() {
-        let actual = trailing_zero_bits(sha256("abcdefghij"));
+    fn leading_zeroes_counted_correctly_with_4_zeroes() {
+        let input = arr![u8;
+            8, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+            16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31];
+        let actual = leading_zero_bits(input);
         let expected = 4;
         assert_eq!(expected, actual);
     }
 
     #[wasm_bindgen_test]
-    fn trailing_zeroes_counted_correctly_with_9_zeroes() {
-        let actual = trailing_zero_bits(sha256(
-            "111111111111111111111111111111111111111111111111111111111111111111111111111111",
-        ));
+    fn leading_zeroes_counted_correctly_with_9_zeroes() {
+        let input = arr![u8;
+            0, 64, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+            16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31];
+        let actual = leading_zero_bits(input);
         let expected = 9;
         assert_eq!(expected, actual);
     }
