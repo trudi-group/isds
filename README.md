@@ -1,6 +1,18 @@
 # Interactive Simulation of Distributed Systems
 
-Demo: https://trudi.weizenbaum-institut.de/isds_prototype/
+A set of building blocks for explaining distributed systems concepts in an interactive way.
+Also a few websites that use these building blocks,
+most prominently our [Layers of Bitcoin](https://layers.trudi.group/).
+
+Want to embed a cool interactive distributed system thingy on your website?
+Here is [an idea](https://layers.trudi.group/network/standalone).
+You can build your own!
+
+Everything here is currently geared towards simulating and visualizing Bitcoin-like systems,
+**but** the underlying simulation framework and interaction components were built with more general goals in mind.
+The core framework (in `isds`) can be extended to also simulate and visualize
+PBFT-like consensus protocols, DHTs, onion routing and maybe even something like TCP congestion control.
+Maybe someday it even *will* be extended in some of these ways...
 
 ## Getting started
 
