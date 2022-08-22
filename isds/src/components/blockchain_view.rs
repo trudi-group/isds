@@ -97,7 +97,7 @@ impl Component for BlockchainView {
         html! {
             <div class="is-unselectable">
                 if show_header {
-                    { "The longest chain, as seen by node" }
+                    { "The blockchain, as seen by node" }
                     <EntityName entity={ viewing_node } class="ml-2 is-family-code is-underlined" />
                 }
                 <svg

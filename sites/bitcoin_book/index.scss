@@ -2,6 +2,15 @@
 @import "../common/fontawesome/scss/fontawesome";
 @import "../common/fontawesome/scss/solid";
 
+// Make `things` less highlighted
+.content {
+  code {
+    padding: 0;
+    color: currentColor;
+    background: transparent;
+  }
+}
+
 // For putting descriptions above the layer simulation on small screens
 @media(max-width: ($desktop - 1)) {
   .is-reversed-desktop {

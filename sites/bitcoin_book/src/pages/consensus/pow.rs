@@ -84,12 +84,12 @@ pub fn pow() -> Html {
 
                         But what kind of puzzles are we talking about?
                         Depending on how you explored this website, you might have already come across our page
-                        about [cryptographic hash functions](blockchain/hash).
+                        about [cryptographic hash functions](blockchain/hashes).
                         What we didn't tell you there is that they are not only used for securing the integrity of the blockchain -
                         they are also used for building the puzzles that ensure that nodes are working hard.
 
                         And the puzzles look like this: Given all the data that you want to include in a block,
-                        including the [hash of the previous block](blockchain/hash),
+                        including the [hash of the previous block](blockchain/hashes),
                         find some extra data to append to that block
                         (the so called *nonce*)
                         so that the hash of the new block gets a certain number of zero bits at the end.

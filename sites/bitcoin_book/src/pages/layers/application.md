@@ -5,3 +5,6 @@ But the main idea is the same: You can send `coins` to your friends and business
 Try it!
 
 The `coins` here are not real, don't worry!
+And if you wonder who `Roberts` and `CoinBroker25` are:
+These are just some random addresses from which `Alice` has received `coins` in the
+(not so distant) past. So she has `coins` to spend now <i class="fas fa-smile-wink"></i>
