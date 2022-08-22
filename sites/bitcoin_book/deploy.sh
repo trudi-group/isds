@@ -10,5 +10,4 @@ trunk build --release
 #rsync -rv dist/* user@host:/somewhere/www/
 
 # deploy via Netlify CLI
-trunk build --release
 netlify deploy --prod
