@@ -223,7 +223,7 @@ struct PowExample {
     left_node: isds::Entity,
     right_node: isds::Entity,
     middle_node: isds::Entity,
-    left_node_block_data: String,
+    left_node_block_data: AttrValue,
 }
 impl Component for PowExample {
     type Message = ();
@@ -373,12 +373,12 @@ impl isds::Command for MineBlockWithOneRandomTransaction {
     }
 }
 
-fn random_block_data() -> String {
-    format!(
+fn random_block_data() -> AttrValue {
+    AttrValue::Owned(format!(
         "{:02x}{:02x}{:02x}{:02x}",
         rand::random::<u64>(),
         rand::random::<u64>(),
         rand::random::<u64>(),
         rand::random::<u64>()
-    )
+    ))
 }

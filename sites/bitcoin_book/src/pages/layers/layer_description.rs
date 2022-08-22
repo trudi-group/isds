@@ -2,7 +2,7 @@ use super::*;
 
 #[derive(Properties, PartialEq)]
 pub struct Props {
-    pub title: String,
+    pub title: AttrValue,
     #[prop_or_default]
     pub children: Children,
 }

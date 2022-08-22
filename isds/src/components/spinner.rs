@@ -2,8 +2,8 @@ use super::*;
 
 #[derive(Properties, PartialEq)]
 pub struct Props {
-    #[prop_or("In progress...".to_string())]
-    pub title: String,
+    #[prop_or(AttrValue::Static("In progress..."))]
+    pub title: AttrValue,
     #[prop_or(1.0)]
     pub spins_per_second: f64,
 }

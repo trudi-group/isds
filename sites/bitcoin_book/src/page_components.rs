@@ -2,7 +2,7 @@ use super::*;
 
 #[derive(Properties, PartialEq)]
 pub struct SimplePageProps {
-    pub title: String,
+    pub title: AttrValue,
     #[prop_or_default]
     pub footer: bool,
     #[prop_or_default]
@@ -57,7 +57,7 @@ pub fn nav_bar() -> Html {
 
 #[derive(Properties, PartialEq)]
 pub struct HeaderProps {
-    pub title: String,
+    pub title: AttrValue,
     #[prop_or_default]
     pub children: Children,
 }

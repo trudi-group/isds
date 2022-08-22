@@ -1,5 +1,6 @@
 use wasm_bindgen::JsCast;
 use yew::prelude::*;
+use yew::virtual_dom::AttrValue;
 use yew_router::prelude::*;
 
 #[macro_use]

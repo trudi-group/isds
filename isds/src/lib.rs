@@ -4,6 +4,7 @@ pub use gloo::console::log;
 use gloo::render::{request_animation_frame, AnimationFrame};
 
 use yew::prelude::*;
+use yew::virtual_dom::AttrValue;
 
 mod components;
 pub use components::*;

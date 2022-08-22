@@ -16,7 +16,7 @@ pub enum Msg {
 #[derive(Properties, PartialEq)]
 pub struct Props {
     #[prop_or_default]
-    pub existing_data: Option<String>,
+    pub existing_data: Option<AttrValue>,
     #[prop_or(false)]
     pub show_only_first_32_bits: bool,
     #[prop_or(true)]
