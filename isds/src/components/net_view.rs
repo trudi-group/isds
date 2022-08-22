@@ -70,7 +70,7 @@ impl Component for NetView {
         html! {
             <>
                 <style>
-                    { " .phantom-link { opacity: 0.0; } .phantom-link:hover { opacity: 1.0; }" }
+                    { " .is-phantom { opacity: 0.0; } .is-phantom:hover { opacity: 1.0; }" }
                 </style>
                 <svg
                     class={ "is-unselectable" } // for avoiding accidental selects on Chrome
@@ -199,7 +199,7 @@ impl NetView {
                     >
                         if ctx.props().toggle_edges_on_click {
                             <line
-                                class={ classes!("phantom-link", "is-clickable") }
+                                class={ classes!("is-phantom", "is-clickable") }
                                 x1={ line.start.x.to_string() }
                                 y1={ line.start.y.to_string() }
                                 x2={ line.end.x.to_string() }
