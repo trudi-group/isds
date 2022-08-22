@@ -8,5 +8,5 @@ This page here shows you all layers at once.
 This is a lot of information!
 Try exploring one layer at a time.
 By clicking on the layer name (the labels with a **+**) you can open some explanatory text about it.
-Also try clicking and hovering around the visual elements - many of them are interactive!
-You can control the speed of the simulation via the time controls at the top of the "Network" view (way below).
+Also try clicking or hovering around the visual elements - many of them are interactive!
+You can control the speed of the simulation via the time controls way below.

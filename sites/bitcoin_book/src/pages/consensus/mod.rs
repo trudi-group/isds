@@ -15,7 +15,7 @@ pub fn consensus() -> Html {
                 <Link<Route> to={Route::ConsensusPow}>
                     { "Proof-of-Work" }
                 </Link<Route>>
-                    { " - a central pillar of the Bitcoin's approach to consensus." }
+                    { " - a central pillar of Bitcoin's approach to consensus." }
             </div>
         </SimplePage>
     }

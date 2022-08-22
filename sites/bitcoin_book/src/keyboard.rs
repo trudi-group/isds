@@ -1,5 +1,19 @@
 use super::*;
 
+#[function_component(KeyboardShortcutsList)]
+pub fn keyboard_shortcuts() -> Html {
+    indoc_markdown_content! { r#"
+        Pssst.... you can also use your keyboard!
+
+        - `[space]` ⇨ pause/play simulation
+        - `[←]`/`[→]` ⇨ control simulation speed
+        - `[m]` ⇨ a random node will "mine" a block
+        - `[t]` ⇨ a random node will send out a random transaction
+        - `[s]` ⇨ toggle slowdown on messages
+        "#
+    }
+}
+
 pub fn init_keyboard_listener(
     sim: isds::SharedSimulation,
     slowdown_handler_index: usize,

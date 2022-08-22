@@ -168,7 +168,6 @@ impl Layers {
                         title="Help a random node mine a block"
                     >
                         <span class="icon"><i class="fas fa-magic"></i></span>
-                        <span class="icon"><i class="fas fa-dice"></i></span>
                     </button>
                 </div>
             },
@@ -185,21 +184,28 @@ impl Layers {
             let sim = self.sim.clone();
             Callback::from(move |node| random_transaction(&mut sim.borrow_mut(), node))
         };
-        view_layer(
+        view_layer_with_extra_part(
+            html! {
+                <isds::NetView
+                    { on_node_click }
+                    node_highlight_on_hover={ true }
+                    highlight_class={ "has-fill-info" }
+                    buffer_space=25.
+                />
+            },
             html! {
                 <>
-                    <isds::TimeUi
-                        show_fps=false
-                        slowdown_handler_index={
-                            Some(self.slowdown_handler_index)
-                        }
-                    />
-                    <isds::NetView
-                        { on_node_click }
-                        node_highlight_on_hover={ true }
-                        highlight_class={ "has-fill-info" }
-                        buffer_space=25.
-                    />
+                    <div class="box">
+                        <isds::TimeUi
+                            show_fps=false
+                            slowdown_handler_index={
+                                Some(self.slowdown_handler_index)
+                            }
+                        />
+                    </div>
+                    <div class="is-hidden-touch">
+                        <KeyboardShortcutsList />
+                    </div>
                 </>
             },
             html! {
@@ -265,12 +271,21 @@ fn init_simulation() -> isds::Simulation {
 }
 
 fn view_layer(simulation_part: Html, explanation_part: Html) -> Html {
+    view_layer_with_extra_part(simulation_part, Html::default(), explanation_part)
+}
+
+fn view_layer_with_extra_part(
+    simulation_part: Html,
+    extra_part: Html,
+    explanation_part: Html,
+) -> Html {
     html! {
         <div class="columns is-reversed-desktop is-centered pb-2">
             <div class="column is-two-thirds-desktop">
                 <div class="box">
                     { simulation_part }
                 </div>
+                { extra_part }
             </div>
             <div class="column is-2-desktop is-wide-enough">
                 { explanation_part }
