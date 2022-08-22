@@ -42,7 +42,11 @@ impl Component for Layers {
         let blockchain_viewing_node = users[0].wallet_node;
 
         let sim = sim.into_shared();
-        let _key_listener = init_keyboard_listener(sim.clone(), slowdown_handler_index);
+        let _key_listener = init_keyboard_listener_with_block_size_limit(
+            sim.clone(),
+            slowdown_handler_index,
+            BLOCK_SIZE_LIMIT,
+        );
         Self {
             sim,
             users,

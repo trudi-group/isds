@@ -18,6 +18,30 @@ pub fn init_keyboard_listener(
     sim: isds::SharedSimulation,
     slowdown_handler_index: usize,
 ) -> gloo::events::EventListener {
+    init_keyboard_listener_with_block_mine_command(
+        sim,
+        slowdown_handler_index,
+        isds::nakamoto_consensus::MineBlock,
+    )
+}
+
+pub fn init_keyboard_listener_with_block_size_limit(
+    sim: isds::SharedSimulation,
+    slowdown_handler_index: usize,
+    block_size_limit: usize,
+) -> gloo::events::EventListener {
+    init_keyboard_listener_with_block_mine_command(
+        sim,
+        slowdown_handler_index,
+        isds::nakamoto_consensus::MineBlockWithLimit(block_size_limit),
+    )
+}
+
+fn init_keyboard_listener_with_block_mine_command(
+    sim: isds::SharedSimulation,
+    slowdown_handler_index: usize,
+    mine_action: impl isds::EntityAction + 'static,
+) -> gloo::events::EventListener {
     let window = gloo::utils::window();
     gloo::events::EventListener::new_with_options(
         &window,
@@ -40,7 +64,7 @@ pub fn init_keyboard_listener(
                 }
                 "m" => {
                     sim.borrow_mut()
-                        .do_now(isds::ForRandomNode(isds::nakamoto_consensus::MineBlock));
+                        .do_now(isds::ForRandomNode(mine_action.clone()));
                     e.prevent_default()
                 }
                 "t" => {

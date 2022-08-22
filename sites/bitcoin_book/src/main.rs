@@ -6,7 +6,9 @@ use yew_router::prelude::*;
 mod markdown;
 
 mod keyboard;
-use keyboard::{init_keyboard_listener, KeyboardShortcutsList};
+use keyboard::{
+    init_keyboard_listener, init_keyboard_listener_with_block_size_limit, KeyboardShortcutsList,
+};
 
 mod user_model;
 use user_model::{random_transaction, random_transaction_from_random_node};
