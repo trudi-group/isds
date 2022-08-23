@@ -163,7 +163,7 @@ impl Layers {
                     <span class="is-size-4 m-5">
                         <isds::Spinner
                             title={ "Mining in progress..." }
-                            spins_per_second={ 10. }
+                            spins_per_second={ 1. / 60. }
                         />
                     </span>
                     <button
