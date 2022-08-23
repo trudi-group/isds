@@ -140,7 +140,7 @@ mod tests {
         let mut sim = Simulation::new();
         sim.do_now(AtRandomIntervals::new(TestCommand, SimSeconds::from(2000.)));
         sim.time.set_speed(1.);
-        sim.catch_up(1000.);
+        sim.catch_up(1.);
 
         let expected: Vec<bool> = vec![];
         let actual: Vec<bool> = sim
