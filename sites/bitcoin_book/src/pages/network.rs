@@ -8,7 +8,7 @@ pub fn network() -> Html {
                 {
                     indoc_markdown_content! { r#"
                         Some day, this page might have more to tell you about the peer-to-peer
-                        networks that underly Bitcoin and many other blockchain-based systems.
+                        networks that underlie Bitcoin and many other blockchain-based systems.
 
                         Right now, we can only offer you a bigger network to play with.
                         As everywhere on this website,
@@ -17,8 +17,11 @@ pub fn network() -> Html {
                         the details vary.
 
                         Try creating some forks!
-                        Clicking on a node causes it to mine a block and clicking on the links between
-                        nodes causes them to disappear.
+                        Clicking on a node causes it to mine a block.
+                        Clicking on a link between two nodes will cause that link to disappear.
+                        In the real world, peers can disconnect for various reasons,
+                        including Internet-level problems and even deliberate attacks.
+                        Can you cause a permanent network split?
                         "#
                     }
                 }
@@ -76,14 +79,15 @@ impl Component for Standalone {
         };
         html! {
             <isds::Isds sim={ self.sim.clone() }>
-                <div style="margin-bottom: -30px"> // chosen based on height of TimeUi level
-                    <isds::TimeUi
-                        slowdown_handler_index={
-                            Some(self.slowdown_handler_index)
-                        }
-                    />
-                </div>
-                <isds::NetView { on_node_click } />
+                <isds::TimeUi
+                    slowdown_handler_index={
+                        Some(self.slowdown_handler_index)
+                    }
+                />
+                <isds::NetView
+                    { on_node_click }
+                    buffer_space=25. // just enough for nodes and blockchains to be fully visible
+                />
             </isds::Isds>
         }
     }

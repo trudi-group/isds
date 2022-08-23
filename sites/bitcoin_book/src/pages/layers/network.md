@@ -20,5 +20,3 @@ Eventually, the information spreads to all nodes.
 Try it!
 Click on one of the nodes in the network,
 which will cause it to create a random transaction and flood it.
-
-A bigger network to play with is available [here](network).

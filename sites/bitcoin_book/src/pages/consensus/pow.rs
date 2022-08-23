@@ -38,9 +38,10 @@ pub fn pow() -> Html {
 
                         In the example below, the top nodes are competitors,
                         each tries to convince the third node that *its* chain is the correct one.
-                        The example uses the *longest chain rule* -
-                        the bottom node will assume that the longest chain it knows is the correct one.
-                        However, creating new blocks is really easy in this example...
+                        The example uses a simpler version of Bitcoin's *longest chain rule*:
+                        The bottom node will assume that the longest chain it knows about is the correct one,
+                        and in case of a tie it will assume that the chain it learned about first is the correct one.
+                        The problem is that creating new blocks is really easy in this example...
                         Try it!
                         Then try confusing the bottom node!
                         "#

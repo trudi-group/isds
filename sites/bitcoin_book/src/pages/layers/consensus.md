@@ -4,7 +4,7 @@ Consensus in Bitcoin is characterized by two central features:
 
 - Use of [Proof-of-Work](consensus/pow) (an extremely energy-intensive lottery) for determining who will get to propose (or *mine*) the next block.
 - Use of the *longest chain rule* for determining the true blockchain whenever there are multiple options,
-for example in the event of *forks*.
+for example in the event of a *fork*.
 
 The specifics are a bit complex - we hide them behind a spinning wheel and a magic button here!
 Click on the button to cause a random node to "win the lottery" and mine a block.
