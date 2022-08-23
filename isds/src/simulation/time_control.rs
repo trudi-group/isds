@@ -54,7 +54,9 @@ impl EventHandler for SlowDownOnMessages {
                         if (self.is_relevant_message)(message, &sim.world) {
                             if self.messages_in_flight == 0 {
                                 self.regular_speed = sim.time.speed();
-                                sim.time.set_speed(self.slow_speed);
+                                if self.slow_speed < self.regular_speed {
+                                    sim.time.set_speed(self.slow_speed);
+                                }
                             }
                             self.messages_in_flight = self.messages_in_flight.saturating_add(1);
                         }
@@ -142,6 +144,23 @@ mod tests {
 
         sim.catch_up(100.);
         assert_eq!(0., sim.time.speed());
+    }
+
+    #[wasm_bindgen_test]
+    fn dont_go_faster_if_already_slower() {
+        let slow_speed = 0.1;
+
+        let mut sim = Simulation::new();
+        sim.add_event_handler(SlowDownOnMessages::new(slow_speed, |_, _| true, true));
+
+        sim.time.set_speed(0.01);
+
+        let node1 = sim.spawn_random_node();
+        let node2 = sim.spawn_random_node();
+        sim.send_message(node1, node2, ());
+
+        sim.catch_up(0.00001);
+        assert_eq!(0.01, sim.time.speed());
     }
 
     #[wasm_bindgen_test]
